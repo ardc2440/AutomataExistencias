@@ -5,6 +5,6 @@ namespace AutomataExistencias.Console.Schedules
 {
     public interface IJobSchedulerFactory
     {
-        void Schedule(Dictionary<string, TimeSpan> scheduleConfig);
+        void Schedule();
     }
 }

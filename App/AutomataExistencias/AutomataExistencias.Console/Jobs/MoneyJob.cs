@@ -18,7 +18,7 @@ namespace AutomataExistencias.Console.Jobs
 
         public void Execute(IJobExecutionContext context)
         {
-            _synchronize.MoneySync();
+            System.Console.WriteLine("_synchronize.MoneySync()");
         }
     }
 }

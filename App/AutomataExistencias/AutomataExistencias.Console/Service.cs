@@ -1,32 +1,29 @@
 ﻿using AutomataExistencias.Console.Schedules;
 using NLog;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
 using AutomataExistencias.Console.Code;
+using AutomataExistencias.Console.Jobs;
 using Topshelf;
 using AutomataExistencias.Core.Extensions;
 using AutomataExistencias.Core.Configuration;
+using Quartz;
 
 namespace AutomataExistencias.Console
 {
     public class Service : IDisposable
     {
         private readonly IJobSchedulerFactory _jobScheduler;
-        private readonly Dictionary<string, TimeSpan> _jobSchedules = new Dictionary<string, TimeSpan>();
         public Service(IConfigurator configurator, IJobSchedulerFactory jobScheduler)
         {
             Logger = LogManager.GetCurrentClassLogger();
             try
             {
                 Logger.Info("Initializing Components");
-                foreach (var key in ConfigurationManager.AppSettings.AllKeys
-                    .Where(key => key.Contains(".Schedule")))
-                {
-                    _jobSchedules.Add(key, TimeSpan.Parse(configurator.GetKey(key)));
-                }
                 _jobScheduler = jobScheduler;
             }
             catch (Exception ex)
@@ -44,7 +41,7 @@ namespace AutomataExistencias.Console
                 Task.Factory.StartNew(() =>
                 {
                     AutofacConfigurator.GetContainer();
-                    _jobScheduler.Schedule(_jobSchedules);
+                    _jobScheduler.Schedule();
                 }, TaskCreationOptions.LongRunning)
                     .ContinueWith(t =>
                     {

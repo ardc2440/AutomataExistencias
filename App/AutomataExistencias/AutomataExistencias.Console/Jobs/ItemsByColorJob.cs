@@ -16,7 +16,7 @@ namespace AutomataExistencias.Console.Jobs
         }
         public void Execute(IJobExecutionContext context)
         {
-            _synchronize.ItemsByColorSync();
+          System.Console.WriteLine("_synchronize.ItemsByColorSync()");
         }
     }
 }
