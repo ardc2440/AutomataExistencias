@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
-using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Cataprom;
 
-namespace AutomataExistencias.Domain.Aldebaran
+namespace AutomataExistencias.Domain.Cataprom
 {
     public interface IUnitMeasuredService
     {
         IEnumerable<UnitMeasured> Get();
+        void AddOrUpdate(UnitMeasured item);
         void Remove(UnitMeasured item);
-        void Remove(IEnumerable<UnitMeasured> items);
+        void Remove(List<UnitMeasured> items);
         void SaveChanges();
     }
 }

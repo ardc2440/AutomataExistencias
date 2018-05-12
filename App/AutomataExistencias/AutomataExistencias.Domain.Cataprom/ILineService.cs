@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
-using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Cataprom;
 
-namespace AutomataExistencias.Domain.Aldebaran
+namespace AutomataExistencias.Domain.Cataprom
 {
     public interface ILineService
     {
         IEnumerable<Line> Get();
+        void AddOrUpdate(Line item);
         void Remove(Line item);
-        void Remove(IEnumerable<Line> items);
+        void Remove(List<Line> items);
         void SaveChanges();
     }
 }

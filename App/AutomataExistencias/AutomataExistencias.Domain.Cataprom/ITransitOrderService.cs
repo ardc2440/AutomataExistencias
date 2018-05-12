@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
-using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Cataprom;
 
-namespace AutomataExistencias.Domain.Aldebaran
+namespace AutomataExistencias.Domain.Cataprom
 {
     public interface ITransitOrderService
     {
         IEnumerable<TransitOrder> Get();
+        void AddOrUpdate(TransitOrder item);
         void Remove(TransitOrder item);
-        void Remove(IEnumerable<TransitOrder> items);
+        void Remove(List<TransitOrder> items);
         void SaveChanges();
     }
 }

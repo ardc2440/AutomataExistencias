@@ -30,6 +30,9 @@ namespace AutomataExistencias.Test.Code
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
             builder.RegisterType<Domain.Cataprom.ItemService>().As<Domain.Cataprom.IItemService>();
             builder.RegisterType<Domain.Cataprom.ItemByColorService>().As<Domain.Cataprom.IItemByColorService>();
+            builder.RegisterType<Domain.Cataprom.LineService>().As<Domain.Cataprom.ILineService>();
+            builder.RegisterType<Domain.Cataprom.UnitMeasuredService>().As<Domain.Cataprom.IUnitMeasuredService>();
+            builder.RegisterType<Domain.Cataprom.TransitOrderService>().As<Domain.Cataprom.ITransitOrderService>();
 
             /*Aldebaran*/
             builder.RegisterType<Domain.Aldebaran.ItemByColorService>().As<Domain.Aldebaran.IItemByColorService>();

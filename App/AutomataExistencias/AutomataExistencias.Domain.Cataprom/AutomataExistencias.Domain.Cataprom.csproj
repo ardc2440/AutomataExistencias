@@ -55,6 +55,7 @@
   <ItemGroup>
     <Compile Include="IItemByColorService.cs" />
     <Compile Include="IItemService.cs" />
+    <Compile Include="ILineService.cs" />
     <Compile Include="IMoneyService.cs" />
     <Compile Include="ItemByColorService.cs">
       <DependentUpon>IItemByColorService.cs</DependentUpon>
@@ -62,10 +63,21 @@
     <Compile Include="ItemService.cs">
       <DependentUpon>IItemService.cs</DependentUpon>
     </Compile>
+    <Compile Include="ITransitOrderService.cs" />
+    <Compile Include="LineService.cs">
+      <DependentUpon>ILineService.cs</DependentUpon>
+    </Compile>
     <Compile Include="MoneyService.cs">
       <DependentUpon>IMoneyService.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="IUnitMeasuredService.cs" />
+    <Compile Include="TransitOrderService.cs">
+      <DependentUpon>ITransitOrderService.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UnitMeasuredService.cs">
+      <DependentUpon>IUnitMeasuredService.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AutomataExistencias.Core\AutomataExistencias.Core.csproj">

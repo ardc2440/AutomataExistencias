@@ -7,7 +7,6 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     public class Stock
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 

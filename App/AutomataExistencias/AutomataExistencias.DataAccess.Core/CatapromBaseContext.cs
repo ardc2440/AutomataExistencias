@@ -11,7 +11,9 @@ namespace AutomataExistencias.DataAccess.Core
         public DbSet<Money> Money { get; set; }
         public DbSet<Item> Item { get; set; }
         public DbSet<ItemByColor> ItemByColor { get; set; }
-
+        public DbSet<Line> Line { get; set; }
+        public DbSet<UnitMeasured> UnitMeasured { get; set; }
+        public DbSet<TransitOrder> TransitOrder { get; set; }
         #endregion
 
         #region Constructors

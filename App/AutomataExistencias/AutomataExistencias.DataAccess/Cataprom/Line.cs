@@ -1,25 +1,22 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace AutomataExistencias.DataAccess.Aldebaran
+namespace AutomataExistencias.DataAccess.Cataprom
 {
-    [Table("RLINEAS")]
+    [Table("tbl_rLineas")]
     public class Line
     {
         [Key]
-        [Column("ID")]
+        [DatabaseGenerated(DatabaseGeneratedOption.None)]
+        [Column("idLinea")]
         public int Id { get; set; }
-        [Column("IDLINEA")]
-        public int LineId { get; set; }
-        [Column("CODLINEA")]
+        [Column("LinCodigo")]
         public string Code { get; set; }
-        [Column("NOMLINEA")]
+        [Column("LinNombre")]
         public string Name { get; set; }
-        [Column("DEMONIO")]
+        [Column("LinDemonio")]
         public string Daemon { get; set; }
-        [Column("ACTIVO")]
+        [Column("LinActivo")]
         public string Active { get; set; }
-        [Column("ACCION")]
-        public string Action { get; set; }
     }
 }

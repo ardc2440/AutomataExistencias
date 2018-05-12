@@ -6,7 +6,6 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     public class Item
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
         [Column("IDITEM")]
