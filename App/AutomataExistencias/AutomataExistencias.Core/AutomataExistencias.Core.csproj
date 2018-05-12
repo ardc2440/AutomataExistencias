@@ -60,6 +60,7 @@
     <Compile Include="Configuration\ICatapromApplicationEnvironment.cs" />
     <Compile Include="Configuration\IConfigurator.cs" />
     <Compile Include="Extensions\ExceptionExtension.cs" />
+    <Compile Include="Extensions\TimeSpanExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -54,13 +54,7 @@ namespace AutomataExistencias.Console.Code
 
             /*Jobs*/
             builder.RegisterType<JobSchedulerFactory>().As<IJobSchedulerFactory>();
-            builder.RegisterType<StockJob>().AsSelf();
-            builder.RegisterType<ItemsJob>().AsSelf();
-            builder.RegisterType<ItemsByColorJob>().AsSelf();
-            builder.RegisterType<LinesJob>().AsSelf();
-            builder.RegisterType<MoneyJob>().AsSelf();
-            builder.RegisterType<TransitOrderJob>().AsSelf();
-            builder.RegisterType<UnitMeasuredJob>().AsSelf();
+            builder.RegisterType<SyncJob>().AsSelf();
 
             builder.RegisterModule(module);
             return builder.Build();
