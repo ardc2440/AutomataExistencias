@@ -26,3 +26,17 @@ C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataE
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.DataAccess\obj\Debug\AutomataExistencias.DataAccess.csprojResolveAssemblyReference.cache
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.DataAccess\obj\Debug\AutomataExistencias.DataAccess.dll
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.DataAccess\obj\Debug\AutomataExistencias.DataAccess.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\AutomataExistencias.DataAccess.dll.config
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\AutomataExistencias.DataAccess.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\AutomataExistencias.DataAccess.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\AutomataExistencias.Core.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\FirebirdSql.Data.FirebirdClient.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\Newtonsoft.Json.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\NLog.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\AutomataExistencias.Core.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\FirebirdSql.Data.FirebirdClient.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\Newtonsoft.Json.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\bin\Debug\NLog.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\obj\Debug\AutomataExistencias.DataAccess.csprojResolveAssemblyReference.cache
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\obj\Debug\AutomataExistencias.DataAccess.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.DataAccess\obj\Debug\AutomataExistencias.DataAccess.pdb

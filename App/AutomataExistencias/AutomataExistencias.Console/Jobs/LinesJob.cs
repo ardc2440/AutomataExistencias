@@ -6,20 +6,17 @@ using Quartz;
 namespace AutomataExistencias.Console.Jobs
 {
     [DisallowConcurrentExecution]
-    public class SyncJob : IJob
+    public class LinesJob : IJob
     {
         private readonly ISynchronize _synchronize;
-
-        public SyncJob()
+        public LinesJob()
         {
             var container = AutofacConfigurator.GetContainer();
             _synchronize = container.Resolve<ISynchronize>();
         }
-
         public void Execute(IJobExecutionContext context)
         {
-            _synchronize.Sync();
+            _synchronize.LinesSync();
         }
-
     }
 }

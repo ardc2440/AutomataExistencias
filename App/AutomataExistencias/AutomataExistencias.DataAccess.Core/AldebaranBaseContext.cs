@@ -8,8 +8,13 @@ namespace AutomataExistencias.DataAccess.Core
     public class AldebaranBaseContext : DbContext
     {
         #region Properties
-
-        public DbSet<Balance> Balance { get; set; }
+        public DbSet<Stock> Stock { get; set; }
+        public DbSet<Item> Item { get; set; }
+        public DbSet<ItemByColor> ItemByColor { get; set; }
+        public DbSet<Line> Line { get; set; }
+        public DbSet<Money> Money { get; set; }
+        public DbSet<UnitMeasured> UnitMeasured { get; set; }
+        public DbSet<TransitOrder> TransitOrder { get; set; }
 
         #endregion
 

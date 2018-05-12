@@ -66,3 +66,35 @@ C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataE
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.Test\obj\Debug\AutomataExistencias.Test.csprojResolveAssemblyReference.cache
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.Test\obj\Debug\AutomataExistencias.Test.dll
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.Test\obj\Debug\AutomataExistencias.Test.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Test.dll.config
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Test.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Test.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\Autofac.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Application.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Core.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.DataAccess.Core.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.DataAccess.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Domain.Aldebaran.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Domain.Cataprom.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\EntityFramework.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\EntityFramework.Firebird.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\EntityFramework.SqlServer.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\FirebirdSql.Data.FirebirdClient.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\Newtonsoft.Json.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\NLog.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Application.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Core.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.DataAccess.Core.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.DataAccess.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Domain.Aldebaran.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\AutomataExistencias.Domain.Cataprom.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\Autofac.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\EntityFramework.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\EntityFramework.Firebird.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\EntityFramework.SqlServer.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\FirebirdSql.Data.FirebirdClient.pdb
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\Newtonsoft.Json.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\bin\Debug\NLog.xml
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\obj\Debug\AutomataExistencias.Test.csprojResolveAssemblyReference.cache
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\obj\Debug\AutomataExistencias.Test.dll
+D:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Test\obj\Debug\AutomataExistencias.Test.pdb

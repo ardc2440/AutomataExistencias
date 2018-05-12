@@ -57,7 +57,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Aldebaran\Balance.cs" />
+    <Compile Include="Aldebaran\Item.cs" />
+    <Compile Include="Aldebaran\ItemByColor.cs" />
+    <Compile Include="Aldebaran\Line.cs" />
+    <Compile Include="Aldebaran\Money.cs" />
+    <Compile Include="Aldebaran\Stock.cs" />
+    <Compile Include="Aldebaran\TransitOrder.cs" />
+    <Compile Include="Aldebaran\UnitMeasured.cs" />
+    <Compile Include="Cataprom\Money.cs" />
     <Compile Include="Cataprom\StockItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

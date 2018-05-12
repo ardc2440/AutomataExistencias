@@ -105,7 +105,13 @@
     <Compile Include="Code\AldebaranApplicationEnvironment.cs" />
     <Compile Include="Code\AutofacConfigurator.cs" />
     <Compile Include="Code\CatapromApplicationEnvironment.cs" />
-    <Compile Include="Jobs\SyncJob.cs" />
+    <Compile Include="Jobs\ItemsByColorJob.cs" />
+    <Compile Include="Jobs\ItemsJob.cs" />
+    <Compile Include="Jobs\LinesJob.cs" />
+    <Compile Include="Jobs\MoneyJob.cs" />
+    <Compile Include="Jobs\StockJob.cs" />
+    <Compile Include="Jobs\TransitOrderJob.cs" />
+    <Compile Include="Jobs\UnitMeasuredJob.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schedules\IJobSchedulerFactory.cs" />

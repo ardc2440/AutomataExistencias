@@ -1,4 +1,5 @@
 ﻿using System;
+using AutomataExistencias.Core.Extensions;
 using NLog;
 using Quartz;
 
@@ -28,7 +29,7 @@ namespace AutomataExistencias.Console.Schedules
         {
             _logger.Info("{0} Ends at:> {1} Elapsed TimeSpan [{2}]", context.JobInstance, DateTime.Now, context.JobRunTime);
             if (jobException == null) return;
-            _logger.Error("JobExecutedException at [{0}] [{1}]", context.JobInstance, jobException.InnerException);
+            _logger.Error("JobExecutedException at [{0}] [{1}]", context.JobInstance, jobException.InnerException.ToJson());
         }
 
         public string Name { get; }

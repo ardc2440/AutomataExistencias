@@ -3,10 +3,11 @@ using AutomataExistencias.DataAccess.Aldebaran;
 
 namespace AutomataExistencias.Domain.Aldebaran
 {
-    public interface IBalanceService
+    public interface IMoneyService
     {
-        IEnumerable<Balance> Get();
-        void Remove(IEnumerable<Balance> entities);
+        IEnumerable<Money> Get();
+        void Remove(Money item);
+        void Remove(IEnumerable<Money> items);
         void SaveChanges();
     }
 }

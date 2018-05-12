@@ -2,6 +2,12 @@
 {
     public interface ISynchronize
     {
-        void Sync();
+        void StockSync();
+        void ItemsSync();
+        void ItemsByColorSync();
+        void LinesSync();
+        void MoneySync();
+        void TransitOrderSync();
+        void UnitMeasuredSync();
     }
 }

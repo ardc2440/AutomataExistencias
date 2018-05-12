@@ -2,12 +2,13 @@
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Linq;
 using System.Threading.Tasks;
 using AutomataExistencias.Console.Code;
 using Topshelf;
 using AutomataExistencias.Core.Extensions;
 using AutomataExistencias.Core.Configuration;
-using Topshelf.Autofac;
 
 namespace AutomataExistencias.Console
 {
@@ -21,7 +22,11 @@ namespace AutomataExistencias.Console
             try
             {
                 Logger.Info("Initializing Components");
-                _jobSchedules.Add("SyncJob", TimeSpan.Parse(configurator.GetKey("SyncJobSchedule")));
+                foreach (var key in ConfigurationManager.AppSettings.AllKeys
+                    .Where(key => key.Contains(".Schedule")))
+                {
+                    _jobSchedules.Add(key, TimeSpan.Parse(configurator.GetKey(key)));
+                }
                 _jobScheduler = jobScheduler;
             }
             catch (Exception ex)
@@ -46,13 +51,13 @@ namespace AutomataExistencias.Console
                         Logger.Error(t.Exception.ToJson());
                         hc.Stop();
                     }, TaskContinuationOptions.OnlyOnFaulted);
+                return true;
             }
             catch (Exception ex)
             {
                 Logger.Error(ex.ToJson());
-                throw;
+                return false;
             }
-            return true;
         }
 
         public void Stop()

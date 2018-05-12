@@ -31,10 +31,20 @@ namespace AutomataExistencias.Console.Schedules
         public void Schedule(Dictionary<string, TimeSpan> scheduleConfig)
         {
             TimeSpan schedule;
-            if (scheduleConfig.TryGetValue("SyncJob", out schedule))
-            {
-                SetSchedule<SyncJob>((int)schedule.TotalSeconds);
-            }
+            //if (scheduleConfig.TryGetValue("StockJob.Schedule", out schedule))
+            //    SetSchedule<StockJob>((int)schedule.TotalSeconds);
+            //if (scheduleConfig.TryGetValue("ItemsJob.Schedule", out schedule))
+            //    SetSchedule<ItemsJob>((int)schedule.TotalSeconds);
+            //if (scheduleConfig.TryGetValue("ItemsByColorJob.Schedule", out schedule))
+            //    SetSchedule<ItemsByColorJob>((int)schedule.TotalSeconds);
+            //if (scheduleConfig.TryGetValue("LinesJob.Schedule", out schedule))
+            //    SetSchedule<LinesJob>((int)schedule.TotalSeconds);
+            if (scheduleConfig.TryGetValue("MoneyJob.Schedule", out schedule))
+                SetSchedule<MoneyJob>((int)schedule.TotalSeconds);
+            //if (scheduleConfig.TryGetValue("TransitOrderJob.Schedule", out schedule))
+            //    SetSchedule<TransitOrderJob>((int)schedule.TotalSeconds);
+            //if (scheduleConfig.TryGetValue("UnitMeasuredJob.Schedule", out schedule))
+            //    SetSchedule<UnitMeasuredJob>((int)schedule.TotalSeconds);
             var listener = new JobListener("AutomatasJobs");
             FactoryInstance.ListenerManager.AddJobListener(listener, GroupMatcher<JobKey>.AnyGroup());
         }
