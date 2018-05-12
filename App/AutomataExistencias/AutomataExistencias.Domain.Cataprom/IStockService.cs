@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
-using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Cataprom;
 
-namespace AutomataExistencias.Domain.Aldebaran
+namespace AutomataExistencias.Domain.Cataprom
 {
     public interface IStockService
     {
         IEnumerable<Stock> Get();
+        void AddOrUpdate(Stock item);
         void Remove(Stock item);
-        void Remove(IEnumerable<Stock> items);
+        void Remove(List<Stock> items);
         void SaveChanges();
     }
 }

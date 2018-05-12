@@ -26,7 +26,7 @@ namespace AutomataExistencias.Domain.Cataprom
 
         public void AddOrUpdate(ItemByColor item)
         {
-            var entity = _unitOfWork.Repository<ItemByColor>().Get(w => w.Id == item.Id).FirstOrDefault();
+            var entity = _unitOfWork.Repository<ItemByColor>().Find(item.Id);
             if (entity == null)
             {
                 _unitOfWork.Repository<ItemByColor>().Add(item);
@@ -54,7 +54,11 @@ namespace AutomataExistencias.Domain.Cataprom
         public void Remove(ItemByColor item)
         {
             var entity = _unitOfWork.Repository<ItemByColor>().Find(item.Id);
-            if (entity == null) return;
+            if (entity == null)
+            {
+                _logger.Warn($"ItemByColor with Id [{item.Id}] does not exists");
+                return;
+            }
             _unitOfWork.Repository<ItemByColor>().Remove(entity);
         }
 

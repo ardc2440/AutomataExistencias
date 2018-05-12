@@ -14,6 +14,7 @@ namespace AutomataExistencias.DataAccess.Core
         public DbSet<Line> Line { get; set; }
         public DbSet<UnitMeasured> UnitMeasured { get; set; }
         public DbSet<TransitOrder> TransitOrder { get; set; }
+        public DbSet<Stock> Stock { get; set; }
         #endregion
 
         #region Constructors

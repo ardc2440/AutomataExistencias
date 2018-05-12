@@ -18,6 +18,7 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
 
         /*Cataprom*/
+        private readonly Domain.Cataprom.IStockService _catapromStockService;
         private readonly Domain.Cataprom.IMoneyService _catapromMoneyService;
         private readonly Domain.Cataprom.IItemService _catapromItemService;
         private readonly Domain.Cataprom.IItemByColorService _catapromItemByColorService;
@@ -26,9 +27,11 @@ namespace AutomataExistencias.Application
         private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
 
         public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService,
-            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService)
+            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService)
         {
             _logger = LogManager.GetCurrentClassLogger();
+            
+            /*Aldebaran*/
             _aldebaranStockService = aldebaranStockService;
             _aldebaranItemService = aldebaranItemService;
             _aldebaranItemByColorService = aldebaranItemByColorService;
@@ -36,17 +39,18 @@ namespace AutomataExistencias.Application
             _aldebaranMoneyService = aldebaranMoneyService;
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
-            _catapromMoneyService = catapromMoneyService;
-
+            
+            /*Cataprom*/
             _catapromItemService = catapromItemService;
             _catapromItemByColorService = catapromItemByColorService;
             _catapromLineService = catapromLineService;
             _catapromUnitMeasuredService = catapromUnitMeasuredService;
             _catapromTransitOrderService = catapromTransitOrderService;
+            _catapromStockService = catapromStockService;
+            _catapromMoneyService = catapromMoneyService;
         }
         public void StockSync()
         {
-
             var dataFirebird = _aldebaranStockService.Get().ToList();
             if (!dataFirebird.Any())
             {
@@ -55,6 +59,43 @@ namespace AutomataExistencias.Application
             }
             _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [StockSync]");
 
+            var deleted = 0;
+            var inserted = 0;
+            foreach (var item in dataFirebird)
+            {
+                try
+                {
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        deleted++;
+                        _catapromStockService.Remove(new DataAccess.Cataprom.Stock { ColorItemId = item.ColorItemId, StorageCellar= item.StorageCellar });
+                    }
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        inserted++;
+                        _catapromStockService.AddOrUpdate(new DataAccess.Cataprom.Stock
+                        {
+                            ColorItemId = item.ColorItemId,
+                            ItemId = item.ItemId,
+                            Color = item.Color,
+                            Quantity = item.Quantity,
+                            StorageCellar = item.StorageCellar
+                        });
+                    }
+                    _catapromStockService.SaveChanges();
+                    _aldebaranStockService.Remove(item);
+                    _aldebaranStockService.SaveChanges();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Internal error when trying to update a Stock from firebird to sql {ex.ToJson()}");
+                }
+            }
+
+            if (deleted > 0)
+                _logger.Info($"{deleted} records has been deleted from Stock sql table");
+            if (inserted > 0)
+                _logger.Info($"{inserted} records has been inserted/updated from Stock sql table");
         }
         public void ItemsSync()
         {

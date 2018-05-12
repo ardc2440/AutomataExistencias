@@ -6,8 +6,18 @@ namespace AutomataExistencias.DataAccess.Cataprom
     [Table("tbl_rexistencias")]
     public class Stock
     {
-        [Key, DatabaseGenerated(DatabaseGeneratedOption.None)]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("IBASE_IDITEMEXISTENCIAS")]
         public int Id { get; set; }
+        [Column("IDITEMXCOLOR")]
+        public int ColorItemId { get; set; }
+        [Column("IDITEM")]
+        public int ItemId { get; set; }
+        [Column("COLOR")]
+        public string Color { get; set; }
+        [Column("CANTIDAD")]
+        public int Quantity { get; set; }
+        [Column("BODEGA")]
+        public string StorageCellar { get; set; }
     }
 }

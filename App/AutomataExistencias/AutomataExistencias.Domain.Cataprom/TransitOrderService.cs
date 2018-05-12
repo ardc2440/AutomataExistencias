@@ -27,7 +27,7 @@ namespace AutomataExistencias.Domain.Cataprom
 
         public void AddOrUpdate(TransitOrder item)
         {
-            var entity = _unitOfWork.Repository<TransitOrder>().Get(w => w.Id == item.Id).FirstOrDefault();
+            var entity = _unitOfWork.Repository<TransitOrder>().Find(item.Id);
             if (entity == null)
             {
                 _unitOfWork.Repository<TransitOrder>().Add(item);
@@ -44,7 +44,11 @@ namespace AutomataExistencias.Domain.Cataprom
         public void Remove(TransitOrder item)
         {
             var entity = _unitOfWork.Repository<TransitOrder>().Find(item.Id);
-            if (entity == null) return;
+            if (entity == null)
+            {
+                _logger.Warn($"TransitOrder with Id [{item.Id}] does not exists");
+                return;
+            }
             _unitOfWork.Repository<TransitOrder>().Remove(entity);
         }
 

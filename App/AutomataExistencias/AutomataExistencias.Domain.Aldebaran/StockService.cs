@@ -22,9 +22,14 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<Stock>().Get();
         }
 
-        public void Remove(IEnumerable<Stock> entities)
+        public void Remove(Stock item)
         {
-            _unitOfWork.Repository<Stock>().Remove(entities);
+            _unitOfWork.Repository<Stock>().Remove(item);
+        }
+
+        public void Remove(IEnumerable<Stock> items)
+        {
+            _unitOfWork.Repository<Stock>().Remove(items);
         }
 
         public void SaveChanges()

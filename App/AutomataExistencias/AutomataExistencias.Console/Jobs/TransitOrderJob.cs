@@ -18,8 +18,7 @@ namespace AutomataExistencias.Console.Jobs
 
         public void Execute(IJobExecutionContext context)
         {
-            System.Console.WriteLine("_synchronize.TransitOrderSync()");
-            System.Threading.Thread.Sleep(10000);
+            _synchronize.TransitOrderSync();
         }
     }
 }

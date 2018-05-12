@@ -27,7 +27,7 @@ namespace AutomataExistencias.Domain.Cataprom
 
         public void AddOrUpdate(Money item)
         {
-            var entity = _unitOfWork.Repository<Money>().Get(w => w.Id == item.Id).FirstOrDefault();
+            var entity = _unitOfWork.Repository<Money>().Find(item.Id);
             if (entity == null)
             {
                 _unitOfWork.Repository<Money>().Add(item);
@@ -41,7 +41,11 @@ namespace AutomataExistencias.Domain.Cataprom
         public void Remove(Money item)
         {
             var entity = _unitOfWork.Repository<Money>().Find(item.Id);
-            if (entity == null) return;
+            if (entity == null)
+            {
+                _logger.Warn($"Money with Id [{item.Id}] does not exists");
+                return;
+            }
             _unitOfWork.Repository<Money>().Remove(entity);
         }
 

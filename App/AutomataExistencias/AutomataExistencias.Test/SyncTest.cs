@@ -19,58 +19,16 @@ namespace AutomataExistencias.Test
             _synchronize = container.Resolve<ISynchronize>();
         }
         [TestMethod]
-        public void ItemsByColorSyncTest()
-        {
-            try
-            {
-                _synchronize.ItemsByColorSync();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-        [TestMethod]
-        public void ItemsSyncTest()
-        {
-            try
-            {
-                _synchronize.ItemsSync();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-        [TestMethod]
-        public void LinesSyncTest()
-        {
-            try
-            {
-                _synchronize.LinesSync();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-        [TestMethod]
-        public void MoneySyncTest()
+        public void Sync()
         {
             try
             {
                 _synchronize.MoneySync();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-        [TestMethod]
-        public void StockSyncTest()
-        {
-            try
-            {
+                _synchronize.UnitMeasuredSync();
+                _synchronize.LinesSync();
+                _synchronize.ItemsSync();
+                _synchronize.ItemsByColorSync();
+                _synchronize.TransitOrderSync();
                 _synchronize.StockSync();
             }
             catch (Exception ex)
@@ -78,29 +36,6 @@ namespace AutomataExistencias.Test
                 throw;
             }
         }
-        [TestMethod]
-        public void TransitOrderSyncTest()
-        {
-            try
-            {
-                _synchronize.TransitOrderSync();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-        [TestMethod]
-        public void UnitMeasuredSyncTest()
-        {
-            try
-            {
-                _synchronize.UnitMeasuredSync();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
+        
     }
 }

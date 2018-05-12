@@ -27,7 +27,7 @@ namespace AutomataExistencias.Domain.Cataprom
 
         public void AddOrUpdate(UnitMeasured item)
         {
-            var entity = _unitOfWork.Repository<UnitMeasured>().Get(w => w.Id == item.Id).FirstOrDefault();
+            var entity = _unitOfWork.Repository<UnitMeasured>().Find(item.Id);
             if (entity == null)
             {
                 _unitOfWork.Repository<UnitMeasured>().Add(item);
@@ -41,7 +41,11 @@ namespace AutomataExistencias.Domain.Cataprom
         public void Remove(UnitMeasured item)
         {
             var entity = _unitOfWork.Repository<UnitMeasured>().Find(item.Id);
-            if (entity == null) return;
+            if (entity == null)
+            {
+                _logger.Warn($"UnitMeasured with Id [{item.Id}] does not exists");
+                return;
+            }
             _unitOfWork.Repository<UnitMeasured>().Remove(entity);
         }
 
