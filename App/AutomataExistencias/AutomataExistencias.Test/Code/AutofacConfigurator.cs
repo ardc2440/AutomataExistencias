@@ -16,7 +16,7 @@ namespace AutomataExistencias.Test.Code
             /*Context*/
             builder.RegisterType<AldebaranBaseContext>().InstancePerDependency();
             builder.RegisterType<CatapromBaseContext>().InstancePerDependency();
-            
+
             /*Environments*/
             builder.RegisterType<AldebaranApplicationEnvironment>().As<IAldebaranApplicationEnvironment>();
             builder.RegisterType<CatapromApplicationEnvironment>().As<ICatapromApplicationEnvironment>();
@@ -29,6 +29,7 @@ namespace AutomataExistencias.Test.Code
             /*Cataprom*/
             builder.RegisterType<Domain.Cataprom.StockItemService>().As<Domain.Cataprom.IStockItemService>();
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
+            builder.RegisterType<Domain.Cataprom.ItemService>().As<Domain.Cataprom.IItemService>();
 
             /*Aldebaran*/
             builder.RegisterType<Domain.Aldebaran.ItemByColorService>().As<Domain.Aldebaran.IItemByColorService>();

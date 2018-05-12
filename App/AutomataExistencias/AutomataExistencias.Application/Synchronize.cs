@@ -20,8 +20,10 @@ namespace AutomataExistencias.Application
 
         /*Cataprom*/
         private readonly Domain.Cataprom.IMoneyService _catapromMoneyService;
+        private readonly Domain.Cataprom.IItemService _catapromItemService;
 
-        public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, Domain.Cataprom.IMoneyService catapromMoneyService)
+        public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService,
+            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranStockService = aldebaranStockService;
@@ -32,6 +34,8 @@ namespace AutomataExistencias.Application
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
             _catapromMoneyService = catapromMoneyService;
+
+            _catapromItemService = catapromItemService;
         }
         //public void Sync()
         //{
@@ -80,37 +84,79 @@ namespace AutomataExistencias.Application
         //}
         public void StockSync()
         {
-            try
+
+            var dataFirebird = _aldebaranStockService.Get().ToList();
+            if (!dataFirebird.Any())
             {
-                var dataFirebird = _aldebaranStockService.Get().ToList();
-                if (!dataFirebird.Any())
-                {
-                    _logger.Info("No records to export from Firebird to Sql [StockSync]");
-                    return;
-                }
-                _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [StockSync]");
+                _logger.Info("No records to export from Firebird to Sql [StockSync]");
+                return;
             }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.ToJson());
-            }
+            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [StockSync]");
+
         }
         public void ItemsSync()
         {
-            try
+            var dataFirebird = _aldebaranItemService.Get().ToList();
+            if (!dataFirebird.Any())
             {
-                var dataFirebird = _aldebaranItemService.Get().ToList();
-                if (!dataFirebird.Any())
+                _logger.Info("No records to export from Firebird to Sql [ItemsSync]");
+                return;
+            }
+            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [ItemsSync]");
+
+            var deleted = 0;
+            var inserted = 0;
+            foreach (var item in dataFirebird)
+            {
+                try
                 {
-                    _logger.Info("No records to export from Firebird to Sql [ItemsSync]");
-                    return;
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        deleted++;
+                        _catapromItemService.Remove(new DataAccess.Cataprom.Item() { Id = item.ItemId });
+                    }
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        inserted++;
+                        _catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
+                        {
+                            Id = item.MoneyId,
+                            LineId = item.LineId,
+                            Reference = item.Reference,
+                            Name = item.Name,
+                            ProviderReference = item.ProviderReference,
+                            ProviderItemName = item.ProviderItemName,
+                            ItemType = item.ItemType,
+                            FobCost = item.FobCost,
+                            MoneyId = item.MoneyId,
+                            PartType = item.PartType,
+                            Determinant = item.Determinant,
+                            Observations = item.Observations,
+                            StockExt = item.StockExt,
+                            CifCost = item.CifCost,
+                            Volume = item.Volume,
+                            Weight = item.Weight,
+                            FobUnitId = item.FobUnitId,
+                            CifUnitId = item.CifUnitId,
+                            NationalProduct = item.NationalProduct,
+                            Active = item.Active,
+                            VisibleCatalog = item.VisibleCatalog,
+                        });
+                    }
+                    _catapromItemService.SaveChanges();
+                    _aldebaranItemService.Remove(item);
+                    _aldebaranItemService.SaveChanges();
                 }
-                _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [ItemsSync]");
+                catch (Exception ex)
+                {
+                    _logger.Error($"Internal error when trying to update an item from firebird to sql {ex.ToJson()}");
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.ToJson());
-            }
+
+            if (deleted > 0)
+                _logger.Info($"{deleted} records has been deleted from Item sql table");
+            if (inserted > 0)
+                _logger.Info($"{inserted} records has been inserted/updated from Item sql table");
         }
         public void ItemsByColorSync()
         {
@@ -184,7 +230,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an money item from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update a money from firebird to sql {ex.ToJson()}");
                 }
             }
 

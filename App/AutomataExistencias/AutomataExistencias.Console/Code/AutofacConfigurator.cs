@@ -34,6 +34,8 @@ namespace AutomataExistencias.Console.Code
             /*Cataprom*/
             builder.RegisterType<Domain.Cataprom.StockItemService>().As<Domain.Cataprom.IStockItemService>();
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
+            builder.RegisterType<Domain.Cataprom.ItemService>().As<Domain.Cataprom.IItemService>();
+
 
             /*Aldebaran*/
             builder.RegisterType<Domain.Aldebaran.ItemByColorService>().As<Domain.Aldebaran.IItemByColorService>();

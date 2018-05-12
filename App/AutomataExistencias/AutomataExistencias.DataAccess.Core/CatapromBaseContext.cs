@@ -10,6 +10,8 @@ namespace AutomataExistencias.DataAccess.Core
         #region Properties
         public DbSet<StockItem> StockItem { get; set; }
         public DbSet<Money> Money { get; set; }
+        public DbSet<Item> Item { get; set; }
+        
         #endregion
 
         #region Constructors

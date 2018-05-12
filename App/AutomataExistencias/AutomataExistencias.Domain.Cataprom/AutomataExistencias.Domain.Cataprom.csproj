@@ -53,8 +53,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IItemService.cs" />
     <Compile Include="IMoneyService.cs" />
     <Compile Include="IStockItemService.cs" />
+    <Compile Include="ItemService.cs">
+      <DependentUpon>IItemService.cs</DependentUpon>
+    </Compile>
     <Compile Include="MoneyService.cs">
       <DependentUpon>IMoneyService.cs</DependentUpon>
     </Compile>

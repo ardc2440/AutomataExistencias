@@ -48,9 +48,7 @@ namespace AutomataExistencias.Domain.Cataprom
         public void Remove(List<Money> items)
         {
             foreach (var entity in items)
-            {
-                _unitOfWork.Repository<Money>().Remove(entity);
-            }
+                Remove(entity);
         }
 
         public void SaveChanges()

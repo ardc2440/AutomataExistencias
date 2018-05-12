@@ -12,11 +12,11 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Column("IDITEM")]
         public int ItemId { get; set; }
         [Column("IDLINEA")]
-        public int Lineid { get; set; }
+        public int LineId { get; set; }
         [Column("REFINTERNA")]
-        public string InternalReference { get; set; }
+        public string Reference { get; set; }
         [Column("NOMITEM")]
-        public string ItemName { get; set; }
+        public string Name { get; set; }
         [Column("REFPROVEEDOR")]
         public string ProviderReference { get; set; }
         [Column("NOMITEMPROV")]

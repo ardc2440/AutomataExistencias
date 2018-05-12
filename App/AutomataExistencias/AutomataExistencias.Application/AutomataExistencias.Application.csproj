@@ -63,7 +63,9 @@
   <ItemGroup>
     <Compile Include="ISynchronize.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Synchronize.cs" />
+    <Compile Include="Synchronize.cs">
+      <DependentUpon>ISynchronize.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AutomataExistencias.Core\AutomataExistencias.Core.csproj">
