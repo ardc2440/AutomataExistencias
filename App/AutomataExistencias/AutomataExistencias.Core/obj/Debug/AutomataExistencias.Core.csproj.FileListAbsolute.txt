@@ -15,3 +15,12 @@ C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataE
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.Core\obj\Debug\AutomataExistencias.Core.csprojResolveAssemblyReference.cache
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.Core\obj\Debug\AutomataExistencias.Core.dll
 C:\Users\Usuario\AppData\Roaming\Skype\My Skype Received Files\App\App\AutomataExistencias\AutomataExistencias.Core\obj\Debug\AutomataExistencias.Core.pdb
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\bin\Debug\AutomataExistencias.Core.dll
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\bin\Debug\AutomataExistencias.Core.pdb
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\bin\Debug\Newtonsoft.Json.dll
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\bin\Debug\NLog.dll
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\bin\Debug\Newtonsoft.Json.xml
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\bin\Debug\NLog.xml
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\obj\Debug\AutomataExistencias.Core.csprojResolveAssemblyReference.cache
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\obj\Debug\AutomataExistencias.Core.dll
+C:\GitRepositories\Proplasticos\App\AutomataExistencias\AutomataExistencias.Core\obj\Debug\AutomataExistencias.Core.pdb

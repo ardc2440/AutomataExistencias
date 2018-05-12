@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
 using AutomataExistencias.Core.Extensions;
 using NLog;
@@ -21,9 +20,10 @@ namespace AutomataExistencias.Application
         /*Cataprom*/
         private readonly Domain.Cataprom.IMoneyService _catapromMoneyService;
         private readonly Domain.Cataprom.IItemService _catapromItemService;
+        private readonly Domain.Cataprom.IItemByColorService _catapromItemByColorService;
 
         public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService,
-            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService)
+            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranStockService = aldebaranStockService;
@@ -36,6 +36,7 @@ namespace AutomataExistencias.Application
             _catapromMoneyService = catapromMoneyService;
 
             _catapromItemService = catapromItemService;
+            _catapromItemByColorService = catapromItemByColorService;
         }
         //public void Sync()
         //{
@@ -113,7 +114,7 @@ namespace AutomataExistencias.Application
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
                         deleted++;
-                        _catapromItemService.Remove(new DataAccess.Cataprom.Item() { Id = item.ItemId });
+                        _catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = item.ItemId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
@@ -149,7 +150,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an item from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update an Item from firebird to sql {ex.ToJson()}");
                 }
             }
 
@@ -160,20 +161,62 @@ namespace AutomataExistencias.Application
         }
         public void ItemsByColorSync()
         {
-            try
+            var dataFirebird = _aldebaranItemByColorService.Get().ToList();
+            if (!dataFirebird.Any())
             {
-                var dataFirebird = _aldebaranItemByColorService.Get().ToList();
-                if (!dataFirebird.Any())
+                _logger.Info("No records to export from Firebird to Sql [ItemsByColorSync]");
+                return;
+            }
+            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [ItemsByColorSync]");
+
+            var deleted = 0;
+            var inserted = 0;
+            foreach (var item in dataFirebird)
+            {
+                try
                 {
-                    _logger.Info("No records to export from Firebird to Sql [ItemsByColorSync]");
-                    return;
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        deleted++;
+                        _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = item.ItemId });
+                    }
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        inserted++;
+                        _catapromItemByColorService.AddOrUpdate(new DataAccess.Cataprom.ItemByColor
+                        {
+                            Id = item.ColorItemId,
+                            ItemId = item.ItemId,
+                            ItemByColorReference = item.ItemByColorReference,
+                            ItemByColorInternalReference = item.ItemByColorInternalReference,
+                            ColorName = item.ColorName,
+                            ProviderNomItemByColor = item.ProviderNomItemByColor,
+                            Observations = item.Observations,
+                            Color = item.Color,
+                            QuantityOrder = item.QuantityOrder,
+                            Quantity = item.Quantity,
+                            QuantityReserved = item.QuantityReserved,
+                            QuantityOrderPan = item.QuantityOrderPan,
+                            QuantityPan = item.QuantityPan,
+                            QuantityReservedPan = item.QuantityReservedPan,
+                            SoldOut = item.SoldOut,
+                            QuantityProcess = item.QuantityProcess,
+                        });
+                    }
+                    _catapromItemByColorService.SaveChanges();
+                    _aldebaranItemByColorService.Remove(item);
+                    _aldebaranItemByColorService.SaveChanges();
                 }
-                _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [ItemsByColorSync]");
+                catch (Exception ex)
+                {
+                    _logger.Error($"Internal error when trying to update an ItemByColor from firebird to sql {ex.ToJson()}");
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.ToJson());
-            }
+
+            if (deleted > 0)
+                _logger.Info($"{deleted} records has been deleted from ItemByColor sql table");
+            if (inserted > 0)
+                _logger.Info($"{inserted} records has been inserted/updated from ItemByColor sql table");
         }
         public void LinesSync()
         {
@@ -230,7 +273,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a money from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update a Money from firebird to sql {ex.ToJson()}");
                 }
             }
 

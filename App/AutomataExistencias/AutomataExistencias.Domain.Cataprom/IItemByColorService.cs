@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
-using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Cataprom;
 
-namespace AutomataExistencias.Domain.Aldebaran
+namespace AutomataExistencias.Domain.Cataprom
 {
     public interface IItemByColorService
     {
         IEnumerable<ItemByColor> Get();
+        void AddOrUpdate(ItemByColor item);
         void Remove(ItemByColor item);
-        void Remove(IEnumerable<ItemByColor> items);
+        void Remove(List<ItemByColor> items);
         void SaveChanges();
     }
 }

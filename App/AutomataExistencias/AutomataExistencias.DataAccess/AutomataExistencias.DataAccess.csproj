@@ -65,8 +65,8 @@
     <Compile Include="Aldebaran\TransitOrder.cs" />
     <Compile Include="Aldebaran\UnitMeasured.cs" />
     <Compile Include="Cataprom\Item.cs" />
+    <Compile Include="Cataprom\ItemByColor.cs" />
     <Compile Include="Cataprom\Money.cs" />
-    <Compile Include="Cataprom\StockItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

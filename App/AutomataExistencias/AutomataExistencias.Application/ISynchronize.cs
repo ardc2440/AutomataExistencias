@@ -10,7 +10,7 @@
         void TransitOrderSync();
         void UnitMeasuredSync();
 
-        void SuMadre();
+        //void SuMadre();
         // Money,Unit,Lines,Items,ItemsByColor,TransitOrder,Stock
     }
 }

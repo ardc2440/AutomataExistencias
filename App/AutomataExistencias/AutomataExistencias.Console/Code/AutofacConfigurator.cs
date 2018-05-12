@@ -32,10 +32,9 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<UnitOfWorkCataprom>().As<IUnitOfWorkCataprom>();
 
             /*Cataprom*/
-            builder.RegisterType<Domain.Cataprom.StockItemService>().As<Domain.Cataprom.IStockItemService>();
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
             builder.RegisterType<Domain.Cataprom.ItemService>().As<Domain.Cataprom.IItemService>();
-
+            builder.RegisterType<Domain.Cataprom.ItemByColorService>().As<Domain.Cataprom.IItemByColorService>();
 
             /*Aldebaran*/
             builder.RegisterType<Domain.Aldebaran.ItemByColorService>().As<Domain.Aldebaran.IItemByColorService>();

@@ -8,10 +8,10 @@ namespace AutomataExistencias.DataAccess.Core
     public class CatapromBaseContext : DbContext
     {
         #region Properties
-        public DbSet<StockItem> StockItem { get; set; }
         public DbSet<Money> Money { get; set; }
         public DbSet<Item> Item { get; set; }
-        
+        public DbSet<ItemByColor> ItemByColor { get; set; }
+
         #endregion
 
         #region Constructors
