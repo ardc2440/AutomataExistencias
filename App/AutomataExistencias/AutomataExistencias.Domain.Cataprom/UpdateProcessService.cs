@@ -10,7 +10,7 @@ namespace AutomataExistencias.Domain.Cataprom
     public class UpdateProcessService : IUpdateProcessService
     {
         public UpdateProcessService(IUnitOfWorkCataprom unitOfWork,
-            IAldebaranApplicationEnvironment applicationEnvironment)
+            ICatapromApplicationEnvironment applicationEnvironment)
         {
             _unitOfWork = unitOfWork;
             _logger = LogManager.GetCurrentClassLogger();

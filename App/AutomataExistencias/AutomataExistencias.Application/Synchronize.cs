@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using AutomataExistencias.Core.Extensions;
+using Newtonsoft.Json;
 using NLog;
 
 namespace AutomataExistencias.Application
@@ -27,12 +28,12 @@ namespace AutomataExistencias.Application
         private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
         private readonly Domain.Cataprom.IUpdateProcessService _catapromUpdateProcessService;
 
-        
+
         public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService,
             Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService, Domain.Cataprom.IUpdateProcessService catapromUpdateProcessService)
         {
             _logger = LogManager.GetCurrentClassLogger();
-            
+
             /*Aldebaran*/
             _aldebaranStockService = aldebaranStockService;
             _aldebaranItemService = aldebaranItemService;
@@ -41,7 +42,7 @@ namespace AutomataExistencias.Application
             _aldebaranMoneyService = aldebaranMoneyService;
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
-            
+
             /*Cataprom*/
             _catapromItemService = catapromItemService;
             _catapromItemByColorService = catapromItemByColorService;
@@ -71,7 +72,7 @@ namespace AutomataExistencias.Application
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
                         deleted++;
-                        _catapromStockService.Remove(new DataAccess.Cataprom.Stock { ColorItemId = item.ColorItemId, StorageCellar= item.StorageCellar });
+                        _catapromStockService.Remove(new DataAccess.Cataprom.Stock { ColorItemId = item.ColorItemId, StorageCellar = item.StorageCellar });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
@@ -91,7 +92,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Stock from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update a Stock from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
@@ -155,7 +156,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an Item from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update an Item from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
@@ -214,7 +215,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an ItemByColor from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update an ItemByColor from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
@@ -262,7 +263,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Line from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update a Line from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
@@ -308,7 +309,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Money from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update a Money from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
@@ -357,7 +358,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a TransitOrder from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update a TransitOrder from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
@@ -403,7 +404,7 @@ namespace AutomataExistencias.Application
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an UnitMeasured from firebird to sql {ex.ToJson()}");
+                    _logger.Error($"Internal error when trying to update an UnitMeasured from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                 }
             }
 
