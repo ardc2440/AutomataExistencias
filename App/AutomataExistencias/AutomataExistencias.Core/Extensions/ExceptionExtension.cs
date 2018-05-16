@@ -11,7 +11,7 @@ namespace AutomataExistencias.Core.Extensions
                 new
                 {
                     ex.Message,
-                    InnerException = ex.InnerException == null ? null : ex.InnerException.Message,
+                    InnerException = ex.InnerException?.InnerException?.Message,
                     ex.StackTrace
                 };
             return JsonConvert.SerializeObject(msg);
