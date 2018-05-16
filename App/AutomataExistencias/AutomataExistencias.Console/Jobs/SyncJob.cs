@@ -45,6 +45,9 @@ namespace AutomataExistencias.Console.Jobs
                 case "StockJob":
                     _synchronize.StockSync();
                     break;
+                case "UpdateProcessJob":
+                    _synchronize.UpdateProcess();
+                    break;
                 default:
                     _logger.Warn($"Key [{key}] not identified");
                     break;

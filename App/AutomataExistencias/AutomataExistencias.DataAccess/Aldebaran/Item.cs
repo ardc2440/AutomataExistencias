@@ -37,13 +37,13 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Column("COSTOCIF")]
         public string CifCost { get; set; }
         [Column("VOLUMEN")]
-        public decimal Volume { get; set; }
+        public decimal? Volume { get; set; }
         [Column("PESO")]
-        public decimal Weight { get; set; }
+        public decimal? Weight { get; set; }
         [Column("IDUNIDADFOB")]
-        public int FobUnitId { get; set; }
+        public int? FobUnitId { get; set; }
         [Column("IDUNIDADCIF")]
-        public int CifUnitId { get; set; }
+        public int? CifUnitId { get; set; }
         [Column("PRODNAC")]
         public string NationalProduct { get; set; }
         [Column("ACTIVO")]

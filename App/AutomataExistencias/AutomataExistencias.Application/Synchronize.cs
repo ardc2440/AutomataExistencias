@@ -25,9 +25,11 @@ namespace AutomataExistencias.Application
         private readonly Domain.Cataprom.ILineService _catapromLineService;
         private readonly Domain.Cataprom.IUnitMeasuredService _catapromUnitMeasuredService;
         private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
+        private readonly Domain.Cataprom.IUpdateProcessService _catapromUpdateProcessService;
 
+        
         public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService,
-            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService)
+            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService, Domain.Cataprom.IUpdateProcessService catapromUpdateProcessService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             
@@ -48,6 +50,7 @@ namespace AutomataExistencias.Application
             _catapromTransitOrderService = catapromTransitOrderService;
             _catapromStockService = catapromStockService;
             _catapromMoneyService = catapromMoneyService;
+            _catapromUpdateProcessService = catapromUpdateProcessService;
         }
         public void StockSync()
         {
@@ -408,6 +411,18 @@ namespace AutomataExistencias.Application
                 _logger.Info($"{deleted} records has been deleted from UnitMeasured sql table");
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from UnitMeasured sql table");
+        }
+
+        public void UpdateProcess()
+        {
+            try
+            {
+                _catapromUpdateProcessService.Update();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Internal error when trying to update synk process in sql {ex.ToJson()}");
+            }
         }
     }
 }
