@@ -9,6 +9,7 @@
         void MoneySync();
         void TransitOrderSync();
         void UnitMeasuredSync();
+        void PackagingSync();
         void UpdateProcess();
     }
 }

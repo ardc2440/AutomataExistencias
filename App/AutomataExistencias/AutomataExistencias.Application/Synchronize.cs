@@ -17,6 +17,7 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
         private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
+        private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
 
         /*Cataprom*/
         private readonly Domain.Cataprom.IStockService _catapromStockService;
@@ -27,10 +28,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Cataprom.IUnitMeasuredService _catapromUnitMeasuredService;
         private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
         private readonly Domain.Cataprom.IUpdateProcessService _catapromUpdateProcessService;
+        private readonly Domain.Cataprom.IPackagingService _catapromPackagingService;
 
-
-        public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService,
-            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService, Domain.Cataprom.IUpdateProcessService catapromUpdateProcessService)
+        public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, Domain.Aldebaran.IPackagingService aldebaranPackagingService,
+            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService, Domain.Cataprom.IUpdateProcessService catapromUpdateProcessService, Domain.Cataprom.IPackagingService catapromPackagingService)
         {
             _logger = LogManager.GetCurrentClassLogger();
 
@@ -42,7 +43,7 @@ namespace AutomataExistencias.Application
             _aldebaranMoneyService = aldebaranMoneyService;
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
-
+            _aldebaranPackagingService = aldebaranPackagingService;
             /*Cataprom*/
             _catapromItemService = catapromItemService;
             _catapromItemByColorService = catapromItemByColorService;
@@ -52,6 +53,7 @@ namespace AutomataExistencias.Application
             _catapromStockService = catapromStockService;
             _catapromMoneyService = catapromMoneyService;
             _catapromUpdateProcessService = catapromUpdateProcessService;
+            _catapromPackagingService = catapromPackagingService;
         }
         public void StockSync()
         {
@@ -127,15 +129,15 @@ namespace AutomataExistencias.Application
                         inserted++;
                         _catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
                         {
-                            Id = item.MoneyId,
-                            LineId = item.LineId,
+                            Id = item.ItemId,
+                            LineId = item.LineId.NullTo(),
                             Reference = item.Reference,
                             Name = item.Name,
                             ProviderReference = item.ProviderReference,
                             ProviderItemName = item.ProviderItemName,
                             ItemType = item.ItemType,
-                            FobCost = item.FobCost,
-                            MoneyId = item.MoneyId,
+                            FobCost = item.FobCost.NullTo(),
+                            MoneyId = item.MoneyId.NullTo(),
                             PartType = item.PartType,
                             Determinant = item.Determinant,
                             Observations = item.Observations,
@@ -184,7 +186,7 @@ namespace AutomataExistencias.Application
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
                         deleted++;
-                        _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = item.ItemId });
+                        _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = item.ColorItemId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
@@ -192,21 +194,21 @@ namespace AutomataExistencias.Application
                         _catapromItemByColorService.AddOrUpdate(new DataAccess.Cataprom.ItemByColor
                         {
                             Id = item.ColorItemId,
-                            ItemId = item.ItemId,
+                            ItemId = item.ItemId.NullTo(),
                             ItemByColorReference = item.ItemByColorReference,
                             ItemByColorInternalReference = item.ItemByColorInternalReference,
                             ColorName = item.ColorName,
                             ProviderNomItemByColor = item.ProviderNomItemByColor,
                             Observations = item.Observations,
                             Color = item.Color,
-                            QuantityOrder = item.QuantityOrder,
-                            Quantity = item.Quantity,
-                            QuantityReserved = item.QuantityReserved,
-                            QuantityOrderPan = item.QuantityOrderPan,
-                            QuantityPan = item.QuantityPan,
-                            QuantityReservedPan = item.QuantityReservedPan,
+                            QuantityOrder = item.QuantityOrder.NullTo(),
+                            Quantity = item.Quantity.NullTo(),
+                            QuantityReserved = item.QuantityReserved.NullTo(),
+                            QuantityOrderPan = item.QuantityOrderPan.NullTo(),
+                            QuantityPan = item.QuantityPan.NullTo(),
+                            QuantityReservedPan = item.QuantityReservedPan.NullTo(),
                             SoldOut = item.SoldOut,
-                            QuantityProcess = item.QuantityProcess,
+                            QuantityProcess = item.QuantityProcess.NullTo(),
                         });
                     }
                     _catapromItemByColorService.SaveChanges();
@@ -345,11 +347,11 @@ namespace AutomataExistencias.Application
                         _catapromTransitOrderService.AddOrUpdate(new DataAccess.Cataprom.TransitOrder
                         {
                             Id = item.TransitOrderItemId,
-                            DeliveredDate = item.DeliveredDate,
-                            DeliveredQuantity = item.DeliveredQuantity,
-                            Date = item.Date,
+                            DeliveredDate = item.DeliveredDate.NullTo(DateTime.Now),
+                            DeliveredQuantity = item.DeliveredQuantity.NullTo(),
+                            Date = item.Date.NullTo(DateTime.Now),
                             Activity = item.Activity,
-                            ColorItemId = item.ColorItemId,
+                            ColorItemId = item.ColorItemId.NullTo(),
                         });
                     }
                     _catapromTransitOrderService.SaveChanges();
@@ -412,6 +414,57 @@ namespace AutomataExistencias.Application
                 _logger.Info($"{deleted} records has been deleted from UnitMeasured sql table");
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from UnitMeasured sql table");
+        }
+
+        public void PackagingSync()
+        {
+            var dataFirebird = _aldebaranPackagingService.Get().ToList();
+            if (!dataFirebird.Any())
+            {
+                _logger.Info("No records to export from Firebird to Sql [PackagingSync]");
+                return;
+            }
+            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [PackagingSync]");
+
+            var deleted = 0;
+            var inserted = 0;
+            foreach (var item in dataFirebird)
+            {
+                try
+                {
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        deleted++;
+                        _catapromPackagingService.Remove(new DataAccess.Cataprom.Packaging { Id = item.PackagingId });
+                    }
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        inserted++;
+                        _catapromPackagingService.AddOrUpdate(new DataAccess.Cataprom.Packaging
+                        {
+                            Id = item.PackagingId,
+                            ItemId = item.ItemId,
+                            Weight = item.Weight,
+                            Height = item.Height,
+                            Width = item.Width,
+                            Long = item.Long,
+                            Quantity = item.Quantity
+                        });
+                    }
+                    _catapromPackagingService.SaveChanges();
+                    _aldebaranPackagingService.Remove(item);
+                    _aldebaranPackagingService.SaveChanges();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Internal error when trying to update a Packaging from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                }
+            }
+
+            if (deleted > 0)
+                _logger.Info($"{deleted} records has been deleted from Packaging sql table");
+            if (inserted > 0)
+                _logger.Info($"{inserted} records has been inserted/updated from Packaging sql table");
         }
 
         public void UpdateProcess()

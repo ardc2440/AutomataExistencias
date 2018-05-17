@@ -48,6 +48,9 @@ namespace AutomataExistencias.Console.Jobs
                 case "UpdateProcessJob":
                     _synchronize.UpdateProcess();
                     break;
+                case "PackagingJob":
+                    _synchronize.PackagingSync();
+                    break;
                 default:
                     _logger.Warn($"Key [{key}] not identified");
                     break;

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using AutomataExistencias.DataAccess.Cataprom;
 using AutomataExistencias.DataAccess.Core.Contract;
 using NLog;
@@ -30,7 +29,7 @@ namespace AutomataExistencias.Domain.Cataprom
 
         public void AddOrUpdate(Stock item)
         {
-            var entity = _unitOfWork.Repository<Stock>().Get(w => w.ColorItemId == item.ColorItemId && w.StorageCellar == item.StorageCellar).FirstOrDefault();
+            var entity = _unitOfWork.Repository<Stock>().GetWithoutNoTracking(w => w.ColorItemId == item.ColorItemId && w.StorageCellar == item.StorageCellar).FirstOrDefault();
             if (entity == null)
             {
                 _unitOfWork.Repository<Stock>().Add(item);

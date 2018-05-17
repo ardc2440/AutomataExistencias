@@ -12,7 +12,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Column("IDITEMXCOLOR")]
         public int ColorItemId { get; set; }
         [Column("IDITEM")]
-        public int ItemId { get; set; }
+        public int? ItemId { get; set; }
         [Column("REFITEMXCOLOR")]
         public string ItemByColorReference { get; set; }
         [Column("REFINTITEMXCOLOR")]
@@ -26,23 +26,23 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Column("COLOR")]
         public string Color { get; set; }
         [Column("CANTPEDIDA")]
-        public int QuantityOrder { get; set; }
+        public int? QuantityOrder { get; set; }
         [Column("CANTIDAD")]
-        public int Quantity { get; set; }
+        public int? Quantity { get; set; }
         [Column("CANTRESERVADA")]
-        public int QuantityReserved { get; set; }
+        public int? QuantityReserved { get; set; }
         [Column("CANTPEDIDAPAN")]
-        public int QuantityOrderPan { get; set; }
+        public int? QuantityOrderPan { get; set; }
         [Column("CANTIDADPAN")]
-        public int QuantityPan { get; set; }
+        public int? QuantityPan { get; set; }
         [Column("CANTRESERVADAPAN")]
-        public int QuantityReservedPan { get; set; }
+        public int? QuantityReservedPan { get; set; }
         [Column("ACTIVO")]
         public string Active { get; set; }
         [Column("AGOTADO")]
         public string SoldOut { get; set; }
         [Column("CANTPROCESO")]
-        public int QuantityProcess { get; set; }
+        public int? QuantityProcess { get; set; }
         [Column("ACCION")]
         public string Action { get; set; }
     }

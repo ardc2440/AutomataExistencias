@@ -40,6 +40,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Cataprom.TransitOrderService>().As<Domain.Cataprom.ITransitOrderService>();
             builder.RegisterType<Domain.Cataprom.StockService>().As<Domain.Cataprom.IStockService>();
             builder.RegisterType<Domain.Cataprom.UpdateProcessService>().As<Domain.Cataprom.IUpdateProcessService>();
+            builder.RegisterType<Domain.Cataprom.PackagingService>().As<Domain.Cataprom.IPackagingService>();
 
             /*Aldebaran*/
             builder.RegisterType<Domain.Aldebaran.ItemByColorService>().As<Domain.Aldebaran.IItemByColorService>();
@@ -49,6 +50,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.MoneyService>().As<Domain.Aldebaran.IMoneyService>();
             builder.RegisterType<Domain.Aldebaran.TransitOrderService>().As<Domain.Aldebaran.ITransitOrderService>();
             builder.RegisterType<Domain.Aldebaran.UnitMeasuredService>().As<Domain.Aldebaran.IUnitMeasuredService>();
+            builder.RegisterType<Domain.Aldebaran.PackagingService>().As<Domain.Aldebaran.IPackagingService>();
 
             /*Sync*/
             builder.RegisterType<Synchronize>().As<ISynchronize>();

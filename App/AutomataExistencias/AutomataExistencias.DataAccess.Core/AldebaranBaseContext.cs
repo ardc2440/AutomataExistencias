@@ -15,6 +15,7 @@ namespace AutomataExistencias.DataAccess.Core
         public DbSet<Money> Money { get; set; }
         public DbSet<UnitMeasured> UnitMeasured { get; set; }
         public DbSet<TransitOrder> TransitOrder { get; set; }
+        public DbSet<Packaging> Packaging { get; set; }
 
         #endregion
 

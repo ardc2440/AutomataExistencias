@@ -11,7 +11,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Column("IDITEM")]
         public int ItemId { get; set; }
         [Column("IDLINEA")]
-        public int LineId { get; set; }
+        public int? LineId { get; set; }
         [Column("REFINTERNA")]
         public string Reference { get; set; }
         [Column("NOMITEM")]
@@ -23,9 +23,9 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Column("TIPOITEM")]
         public string ItemType { get; set; }
         [Column("COSTOFOB")]
-        public decimal FobCost { get; set; }
+        public decimal? FobCost { get; set; }
         [Column("IDMONEDA")]
-        public int MoneyId { get; set; }
+        public int? MoneyId { get; set; }
         [Column("TIPPARTE")]
         public string PartType { get; set; }
         [Column("DETERMINANTE")]

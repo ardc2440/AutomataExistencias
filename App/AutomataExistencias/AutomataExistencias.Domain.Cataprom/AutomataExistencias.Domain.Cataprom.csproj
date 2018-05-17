@@ -58,6 +58,7 @@
     <Compile Include="IItemService.cs" />
     <Compile Include="ILineService.cs" />
     <Compile Include="IMoneyService.cs" />
+    <Compile Include="IPackagingService.cs" />
     <Compile Include="IStockService.cs" />
     <Compile Include="ItemByColorService.cs">
       <DependentUpon>IItemByColorService.cs</DependentUpon>
@@ -72,6 +73,9 @@
     </Compile>
     <Compile Include="MoneyService.cs">
       <DependentUpon>IMoneyService.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PackagingService.cs">
+      <DependentUpon>IPackagingService.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="IUnitMeasuredService.cs" />
