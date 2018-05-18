@@ -7,9 +7,7 @@ namespace AutomataExistencias.Domain.Aldebaran
     public class LineService : ILineService
     {
         #region Properties
-
         private readonly IUnitOfWorkAldebaran _unitOfWork;
-
         #endregion
 
         public LineService(IUnitOfWorkAldebaran unitOfWork)
@@ -22,9 +20,19 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<Line>().Get();
         }
 
+        public IEnumerable<Line> Get(int attempts)
+        {
+            return _unitOfWork.Repository<Line>().Get(w => w.Attempts < attempts);
+        }
+
         public void Remove(Line item)
         {
             _unitOfWork.Repository<Line>().Remove(item);
+        }
+
+        public void Update(Line item)
+        {
+            _unitOfWork.Repository<Line>().Update(item);
         }
 
         public void Remove(IEnumerable<Line> items)

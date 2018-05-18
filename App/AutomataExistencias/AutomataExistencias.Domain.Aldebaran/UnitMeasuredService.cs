@@ -7,9 +7,7 @@ namespace AutomataExistencias.Domain.Aldebaran
     public class UnitMeasuredService : IUnitMeasuredService
     {
         #region Properties
-
         private readonly IUnitOfWorkAldebaran _unitOfWork;
-
         #endregion
 
         public UnitMeasuredService(IUnitOfWorkAldebaran unitOfWork)
@@ -22,9 +20,19 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<UnitMeasured>().Get();
         }
 
+        public IEnumerable<UnitMeasured> Get(int attempts)
+        {
+            return _unitOfWork.Repository<UnitMeasured>().Get(w => w.Attempts < attempts);
+        }
+
         public void Remove(UnitMeasured item)
         {
             _unitOfWork.Repository<UnitMeasured>().Remove(item);
+        }
+
+        public void Update(UnitMeasured item)
+        {
+            _unitOfWork.Repository<UnitMeasured>().Update(item);
         }
 
         public void Remove(IEnumerable<UnitMeasured> items)

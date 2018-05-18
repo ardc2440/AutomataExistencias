@@ -7,9 +7,7 @@ namespace AutomataExistencias.Domain.Aldebaran
     public class TransitOrderService : ITransitOrderService
     {
         #region Properties
-
         private readonly IUnitOfWorkAldebaran _unitOfWork;
-
         #endregion
 
         public TransitOrderService(IUnitOfWorkAldebaran unitOfWork)
@@ -22,9 +20,19 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<TransitOrder>().Get();
         }
 
+        public IEnumerable<TransitOrder> Get(int attempts)
+        {
+            return _unitOfWork.Repository<TransitOrder>().Get(w => w.Attempts < attempts);
+        }
+
         public void Remove(TransitOrder item)
         {
             _unitOfWork.Repository<TransitOrder>().Remove(item);
+        }
+
+        public void Update(TransitOrder item)
+        {
+            _unitOfWork.Repository<TransitOrder>().Update(item);
         }
 
         public void Remove(IEnumerable<TransitOrder> items)

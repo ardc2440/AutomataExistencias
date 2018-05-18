@@ -7,9 +7,7 @@ namespace AutomataExistencias.Domain.Aldebaran
     public class StockService : IStockService
     {
         #region Properties
-
         private readonly IUnitOfWorkAldebaran _unitOfWork;
-
         #endregion
 
         public StockService(IUnitOfWorkAldebaran unitOfWork)
@@ -22,9 +20,19 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<Stock>().Get();
         }
 
+        public IEnumerable<Stock> Get(int attempts)
+        {
+            return _unitOfWork.Repository<Stock>().Get(w => w.Attempts < attempts);
+        }
+
         public void Remove(Stock item)
         {
             _unitOfWork.Repository<Stock>().Remove(item);
+        }
+
+        public void Update(Stock item)
+        {
+            _unitOfWork.Repository<Stock>().Update(item);
         }
 
         public void Remove(IEnumerable<Stock> items)

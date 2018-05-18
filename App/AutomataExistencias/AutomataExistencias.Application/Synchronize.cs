@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
 using Newtonsoft.Json;
 using NLog;
@@ -29,9 +30,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
         private readonly Domain.Cataprom.IUpdateProcessService _catapromUpdateProcessService;
         private readonly Domain.Cataprom.IPackagingService _catapromPackagingService;
-
+        private readonly int _syncAttempts;
         public Synchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Aldebaran.ILineService aldebaranLineService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, Domain.Aldebaran.IPackagingService aldebaranPackagingService,
-            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService, Domain.Cataprom.IUpdateProcessService catapromUpdateProcessService, Domain.Cataprom.IPackagingService catapromPackagingService)
+            Domain.Cataprom.IMoneyService catapromMoneyService, Domain.Cataprom.IItemService catapromItemService, Domain.Cataprom.IItemByColorService catapromItemByColorService, Domain.Cataprom.ILineService catapromLineService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService, Domain.Cataprom.IStockService catapromStockService, Domain.Cataprom.IUpdateProcessService catapromUpdateProcessService, Domain.Cataprom.IPackagingService catapromPackagingService,
+            IConfigurator configurator)
         {
             _logger = LogManager.GetCurrentClassLogger();
 
@@ -54,16 +56,17 @@ namespace AutomataExistencias.Application
             _catapromMoneyService = catapromMoneyService;
             _catapromUpdateProcessService = catapromUpdateProcessService;
             _catapromPackagingService = catapromPackagingService;
+            _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
         }
         public void StockSync()
         {
-            var dataFirebird = _aldebaranStockService.Get().ToList();
+            var dataFirebird = _aldebaranStockService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [StockSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [StockSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [StockSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -73,12 +76,14 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
-                        _catapromStockService.Remove(new DataAccess.Cataprom.Stock { ColorItemId = item.ColorItemId, StorageCellar = item.StorageCellar });
+                        _catapromStockService.Remove(new DataAccess.Cataprom.Stock
+                        {
+                            ColorItemId = item.ColorItemId,
+                            StorageCellar = item.StorageCellar
+                        });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromStockService.AddOrUpdate(new DataAccess.Cataprom.Stock
                         {
                             ColorItemId = item.ColorItemId,
@@ -90,11 +95,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromStockService.SaveChanges();
                     _aldebaranStockService.Remove(item);
-                    _aldebaranStockService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Stock from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update a Stock from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update a Stock from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranStockService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranStockService.SaveChanges();
                 }
             }
 
@@ -105,13 +121,13 @@ namespace AutomataExistencias.Application
         }
         public void ItemsSync()
         {
-            var dataFirebird = _aldebaranItemService.Get().ToList();
+            var dataFirebird = _aldebaranItemService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [ItemsSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [ItemsSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [ItemsSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -121,12 +137,10 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
                         _catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = item.ItemId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
                         {
                             Id = item.ItemId,
@@ -154,11 +168,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromItemService.SaveChanges();
                     _aldebaranItemService.Remove(item);
-                    _aldebaranItemService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an Item from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update an Item from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update an Item from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranItemService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranItemService.SaveChanges();
                 }
             }
 
@@ -169,13 +194,13 @@ namespace AutomataExistencias.Application
         }
         public void ItemsByColorSync()
         {
-            var dataFirebird = _aldebaranItemByColorService.Get().ToList();
+            var dataFirebird = _aldebaranItemByColorService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [ItemsByColorSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [ItemsByColorSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [ItemsByColorSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -185,12 +210,10 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
                         _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = item.ColorItemId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromItemByColorService.AddOrUpdate(new DataAccess.Cataprom.ItemByColor
                         {
                             Id = item.ColorItemId,
@@ -213,11 +236,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromItemByColorService.SaveChanges();
                     _aldebaranItemByColorService.Remove(item);
-                    _aldebaranItemByColorService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an ItemByColor from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update an ItemByColor from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update an ItemByColor from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranItemByColorService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranItemByColorService.SaveChanges();
                 }
             }
 
@@ -228,13 +262,13 @@ namespace AutomataExistencias.Application
         }
         public void LinesSync()
         {
-            var dataFirebird = _aldebaranLineService.Get().ToList();
+            var dataFirebird = _aldebaranLineService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [LinesSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [LinesSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [LinesSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -244,12 +278,10 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
                         _catapromLineService.Remove(new DataAccess.Cataprom.Line { Id = item.LineId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromLineService.AddOrUpdate(new DataAccess.Cataprom.Line
                         {
                             Id = item.LineId,
@@ -261,11 +293,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromLineService.SaveChanges();
                     _aldebaranLineService.Remove(item);
-                    _aldebaranLineService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Line from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update a Line from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update a Line from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranLineService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranLineService.SaveChanges();
                 }
             }
 
@@ -276,13 +319,13 @@ namespace AutomataExistencias.Application
         }
         public void MoneySync()
         {
-            var dataFirebird = _aldebaranMoneyService.Get().ToList();
+            var dataFirebird = _aldebaranMoneyService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [MoneySync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [MoneySync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [MoneySync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -292,12 +335,10 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
                         _catapromMoneyService.Remove(new DataAccess.Cataprom.Money { Id = item.MoneyId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromMoneyService.AddOrUpdate(new DataAccess.Cataprom.Money
                         {
                             Id = item.MoneyId,
@@ -307,11 +348,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromMoneyService.SaveChanges();
                     _aldebaranMoneyService.Remove(item);
-                    _aldebaranMoneyService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Money from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update a Money from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranMoneyService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranMoneyService.SaveChanges();
                 }
             }
 
@@ -322,13 +374,13 @@ namespace AutomataExistencias.Application
         }
         public void TransitOrderSync()
         {
-            var dataFirebird = _aldebaranTransitOrderService.Get().ToList();
+            var dataFirebird = _aldebaranTransitOrderService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [UnitMeasuredSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [UnitMeasuredSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [UnitMeasuredSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -338,12 +390,13 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
-                        _catapromTransitOrderService.Remove(new DataAccess.Cataprom.TransitOrder { Id = item.TransitOrderItemId });
+                        _catapromTransitOrderService.Remove(new DataAccess.Cataprom.TransitOrder
+                        {
+                            Id = item.TransitOrderItemId
+                        });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromTransitOrderService.AddOrUpdate(new DataAccess.Cataprom.TransitOrder
                         {
                             Id = item.TransitOrderItemId,
@@ -356,11 +409,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromTransitOrderService.SaveChanges();
                     _aldebaranTransitOrderService.Remove(item);
-                    _aldebaranTransitOrderService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a TransitOrder from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update a TransitOrder from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update a TransitOrder from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranTransitOrderService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranTransitOrderService.SaveChanges();
                 }
             }
 
@@ -371,13 +435,13 @@ namespace AutomataExistencias.Application
         }
         public void UnitMeasuredSync()
         {
-            var dataFirebird = _aldebaranUnitMeasuredService.Get().ToList();
+            var dataFirebird = _aldebaranUnitMeasuredService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [UnitMeasuredSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [UnitMeasuredSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [UnitMeasuredSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -387,12 +451,13 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
-                        _catapromUnitMeasuredService.Remove(new DataAccess.Cataprom.UnitMeasured { Id = item.UnitMeasuredId });
+                        _catapromUnitMeasuredService.Remove(new DataAccess.Cataprom.UnitMeasured
+                        {
+                            Id = item.UnitMeasuredId
+                        });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromUnitMeasuredService.AddOrUpdate(new DataAccess.Cataprom.UnitMeasured
                         {
                             Id = item.UnitMeasuredId,
@@ -402,11 +467,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromUnitMeasuredService.SaveChanges();
                     _aldebaranUnitMeasuredService.Remove(item);
-                    _aldebaranUnitMeasuredService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update an UnitMeasured from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update a UnitMeasured from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update a UnitMeasured from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranUnitMeasuredService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranUnitMeasuredService.SaveChanges();
                 }
             }
 
@@ -415,16 +491,15 @@ namespace AutomataExistencias.Application
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from UnitMeasured sql table");
         }
-
         public void PackagingSync()
         {
-            var dataFirebird = _aldebaranPackagingService.Get().ToList();
+            var dataFirebird = _aldebaranPackagingService.Get(_syncAttempts).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to export from Firebird to Sql [PackagingSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} to export from Firebird to Sql [PackagingSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to export from Firebird to Sql [PackagingSync]");
 
             var deleted = 0;
             var inserted = 0;
@@ -434,12 +509,10 @@ namespace AutomataExistencias.Application
                 {
                     if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        deleted++;
                         _catapromPackagingService.Remove(new DataAccess.Cataprom.Packaging { Id = item.PackagingId });
                     }
                     if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        inserted++;
                         _catapromPackagingService.AddOrUpdate(new DataAccess.Cataprom.Packaging
                         {
                             Id = item.PackagingId,
@@ -453,11 +526,22 @@ namespace AutomataExistencias.Application
                     }
                     _catapromPackagingService.SaveChanges();
                     _aldebaranPackagingService.Remove(item);
-                    _aldebaranPackagingService.SaveChanges();
+                    if (string.Equals(item.Action, "D", StringComparison.CurrentCultureIgnoreCase)) deleted++;
+                    if (string.Equals(item.Action, "I", StringComparison.CurrentCultureIgnoreCase)) inserted++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Internal error when trying to update a Packaging from firebird to sql Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to update a Packaging from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to update a Packaging from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranPackagingService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranPackagingService.SaveChanges();
                 }
             }
 
@@ -466,7 +550,6 @@ namespace AutomataExistencias.Application
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from Packaging sql table");
         }
-
         public void UpdateProcess()
         {
             try

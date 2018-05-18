@@ -25,5 +25,10 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public string Quantity { get; set; }
         [Column("ACCION")]
         public string Action { get; set; }
+
+        [Column("INTENTOS")]
+        public int Attempts { get; set; }
+        [Column("ERROR")]
+        public string Exception { get; set; }
     }
 }

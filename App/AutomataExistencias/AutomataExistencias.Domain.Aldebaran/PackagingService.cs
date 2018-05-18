@@ -7,9 +7,7 @@ namespace AutomataExistencias.Domain.Aldebaran
     public class PackagingService : IPackagingService
     {
         #region Properties
-
         private readonly IUnitOfWorkAldebaran _unitOfWork;
-
         #endregion
 
         public PackagingService(IUnitOfWorkAldebaran unitOfWork)
@@ -22,9 +20,19 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<Packaging>().Get();
         }
 
+        public IEnumerable<Packaging> Get(int attempts)
+        {
+            return _unitOfWork.Repository<Packaging>().Get(w => w.Attempts < attempts);
+        }
+
         public void Remove(Packaging item)
         {
             _unitOfWork.Repository<Packaging>().Remove(item);
+        }
+
+        public void Update(Packaging item)
+        {
+            _unitOfWork.Repository<Packaging>().Update(item);
         }
 
         public void Remove(IEnumerable<Packaging> items)

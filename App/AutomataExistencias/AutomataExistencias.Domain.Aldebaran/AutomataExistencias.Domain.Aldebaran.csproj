@@ -85,7 +85,9 @@
     <Compile Include="MoneyService.cs">
       <DependentUpon>IMoneyService.cs</DependentUpon>
     </Compile>
-    <Compile Include="PackagingService.cs" />
+    <Compile Include="PackagingService.cs">
+      <DependentUpon>IPackagingService.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StockService.cs">
       <DependentUpon>IStockService.cs</DependentUpon>

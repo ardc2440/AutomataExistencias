@@ -27,12 +27,12 @@ namespace AutomataExistencias.Test
             try
             {
                 _logger.Info("SyncTest has started");
-                _synchronize.MoneySync();
-                _synchronize.UnitMeasuredSync();
-                _synchronize.LinesSync();
-                _synchronize.ItemsSync();
-                _synchronize.ItemsByColorSync();
-                _synchronize.TransitOrderSync();
+                //_synchronize.MoneySync();
+                //_synchronize.UnitMeasuredSync();
+                //_synchronize.LinesSync();
+                //_synchronize.ItemsSync();
+                //_synchronize.ItemsByColorSync();
+                //_synchronize.TransitOrderSync();
                 _synchronize.StockSync();
             }
             catch (Exception ex)

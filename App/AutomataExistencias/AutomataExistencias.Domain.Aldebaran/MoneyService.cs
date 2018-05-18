@@ -7,9 +7,7 @@ namespace AutomataExistencias.Domain.Aldebaran
     public class MoneyService : IMoneyService
     {
         #region Properties
-
         private readonly IUnitOfWorkAldebaran _unitOfWork;
-
         #endregion
 
         public MoneyService(IUnitOfWorkAldebaran unitOfWork)
@@ -22,9 +20,19 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<Money>().Get();
         }
 
+        public IEnumerable<Money> Get(int attempts)
+        {
+            return _unitOfWork.Repository<Money>().Get(w => w.Attempts < attempts);
+        }
+
         public void Remove(Money item)
         {
             _unitOfWork.Repository<Money>().Remove(item);
+        }
+
+        public void Update(Money item)
+        {
+            _unitOfWork.Repository<Money>().Update(item);
         }
 
         public void Remove(IEnumerable<Money> items)
