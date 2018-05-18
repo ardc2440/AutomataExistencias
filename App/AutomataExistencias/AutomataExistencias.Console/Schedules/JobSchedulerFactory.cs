@@ -18,23 +18,26 @@ namespace AutomataExistencias.Console.Schedules
             _logger = LogManager.GetCurrentClassLogger();
         }
 
-        public void Schedule()
+        private static Tuple<IJobDetail, ITrigger> SetSchedule<T>(string intervalKey) where T : IJob
         {
-            var sch = ConfigurationManager.AppSettings["Schedule.Interval"];
+            var sch = ConfigurationManager.AppSettings[intervalKey];
             var schedule = TimeSpan.Parse(sch);
-
-            var syncJob = JobBuilder.Create<SyncJob>().Build();
+            var jobBuilder = JobBuilder.Create<T>().Build();
             var trigger = TriggerBuilder.Create()
                 .StartNow()
                 .WithSimpleSchedule(x => x
-                    .WithIntervalInSeconds((int) schedule.TotalSeconds)
+                    .WithIntervalInSeconds((int)schedule.TotalSeconds)
                     .RepeatForever())
                 .Build();
+            return new Tuple<IJobDetail, ITrigger>(jobBuilder, trigger);
+        }
+        public void Schedule()
+        {
+            var syncJobTuple = SetSchedule<SyncJob>("Schedule.Interval");
             var schedFact = new StdSchedulerFactory();
             var factoryInstance = schedFact.GetScheduler();
             factoryInstance.Start();
-            factoryInstance.ScheduleJob(syncJob, trigger);
-
+            factoryInstance.ScheduleJob(syncJobTuple.Item1, syncJobTuple.Item2);
             var listener = new JobChainingJobListener("AutomatasJobs");
             factoryInstance.ListenerManager.AddJobListener(listener, GroupMatcher<JobKey>.AnyGroup());
         }

@@ -1,0 +1,125 @@
+﻿using System;
+using System.Linq;
+using AutomataExistencias.Core.Configuration;
+using AutomataExistencias.Core.Extensions;
+using Newtonsoft.Json;
+using NLog;
+
+namespace AutomataExistencias.Application
+{
+    public class ItemSynchronize : IItemSynchronize
+    {
+        private readonly Logger _logger;
+        private readonly Domain.Aldebaran.IItemService _aldebaranItemService;
+        private readonly Domain.Cataprom.IItemService _catapromItemService;
+        private readonly int _syncAttempts;
+        public ItemSynchronize(Domain.Aldebaran.IItemService aldebaranItemService, Domain.Cataprom.IItemService catapromItemService, IConfigurator configurator)
+        {
+            _logger = LogManager.GetCurrentClassLogger();
+            _aldebaranItemService = aldebaranItemService;
+            _catapromItemService = catapromItemService;
+            _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
+        }
+        public void Sync()
+        {
+            var dataFirebird = _aldebaranItemService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            if (!dataFirebird.Any())
+            {
+                _logger.Info("No records to insert/update from Firebird to Sql [ItemsSync]");
+                return;
+            }
+            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Firebird to Sql [ItemsSync]");
+
+            var inserted = 0;
+            foreach (var item in dataFirebird)
+            {
+                try
+                {
+                    _catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
+                    {
+                        Id = item.ItemId,
+                        LineId = item.LineId.NullTo(),
+                        Reference = item.Reference,
+                        Name = item.Name,
+                        ProviderReference = item.ProviderReference,
+                        ProviderItemName = item.ProviderItemName,
+                        ItemType = item.ItemType,
+                        FobCost = item.FobCost.NullTo(),
+                        MoneyId = item.MoneyId.NullTo(),
+                        PartType = item.PartType,
+                        Determinant = item.Determinant,
+                        Observations = item.Observations,
+                        StockExt = item.StockExt,
+                        CifCost = item.CifCost,
+                        Volume = item.Volume,
+                        Weight = item.Weight,
+                        FobUnitId = item.FobUnitId,
+                        CifUnitId = item.CifUnitId,
+                        NationalProduct = item.NationalProduct,
+                        Active = item.Active,
+                        VisibleCatalog = item.VisibleCatalog,
+                    });
+                    _catapromItemService.SaveChanges();
+                    _aldebaranItemService.Remove(item);
+                    inserted++;
+                }
+                catch (Exception ex)
+                {
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to insert/update an Item from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to insert/update an Item from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranItemService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranItemService.SaveChanges();
+                }
+            }
+
+            if (inserted > 0)
+                _logger.Info($"{inserted} records has been inserted/updated from Item sql table");
+        }
+        public void ReverseSync()
+        {
+            var dataFirebird = _aldebaranItemService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            if (!dataFirebird.Any())
+            {
+                _logger.Info("No records to delete from Firebird to Sql [ItemsReverseSync]");
+                return;
+            }
+            _logger.Info($"Found {dataFirebird.Count} records to delete from Firebird to Sql [ItemsReverseSync]");
+
+            var deleted = 0;
+            foreach (var item in dataFirebird)
+            {
+                try
+                {
+                    _catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = item.ItemId });
+                    _catapromItemService.SaveChanges();
+                    _aldebaranItemService.Remove(item);
+                    deleted++;
+                }
+                catch (Exception ex)
+                {
+                    item.Attempts++;
+                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < _syncAttempts)
+                        _logger.Error($"Internal error when trying to delete an Item from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    else
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to delete an Item from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    _aldebaranItemService.Update(item);
+                }
+                finally
+                {
+                    _aldebaranItemService.SaveChanges();
+                }
+            }
+
+            if (deleted > 0)
+                _logger.Info($"{deleted} records has been deleted from Item sql table");
+        }
+    }
+}

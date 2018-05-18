@@ -108,10 +108,19 @@
     <Compile Include="Code\AldebaranApplicationEnvironment.cs" />
     <Compile Include="Code\AutofacConfigurator.cs" />
     <Compile Include="Code\CatapromApplicationEnvironment.cs" />
-    <Compile Include="SyncTest.cs" />
+    <Compile Include="Sync\SyncTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AldebaranTest.cs" />
     <Compile Include="CatapromTest.cs" />
+    <Compile Include="Sync\MoneySyncTest.cs" />
+    <Compile Include="Sync\UnitMeasuredSyncTest.cs" />
+    <Compile Include="Sync\LinesSyncTest.cs" />
+    <Compile Include="Sync\ItemsSyncTest.cs" />
+    <Compile Include="Sync\ItemsByColorSyncTest.cs" />
+    <Compile Include="Sync\TransitOrderSyncTest.cs" />
+    <Compile Include="Sync\PackagingSyncTest.cs" />
+    <Compile Include="Sync\StockSyncTest.cs" />
+    <Compile Include="Sync\UpdateProcessSyncTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AutomataExistencias.Application\AutomataExistencias.Application.csproj">

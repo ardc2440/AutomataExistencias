@@ -12,12 +12,29 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class SyncJob : IJob
     {
-        private readonly ISynchronize _synchronize;
+        private readonly IItemByColorSynchronize _itemByColorSynchronize;
+        private readonly IItemSynchronize _itemSynchronize;
+        private readonly ILineSynchronize _lineSynchronize;
+        private readonly IMoneySynchronize _moneySynchronize;
+        private readonly IPackagingSynchronize _packagingSynchronize;
+        private readonly IStockSynchronize _stockSynchronize;
+        private readonly ITransitOrderSynchronize _transitOrderSynchronize;
+        private readonly IUnitMeasuredSynchronize _unitMeasuredSynchronize;
+        private readonly IUpdateProcessSynchronize _updateProcessSynchronize;
+
         private readonly Logger _logger;
         public SyncJob()
         {
             var container = AutofacConfigurator.GetContainer();
-            _synchronize = container.Resolve<ISynchronize>();
+            _itemByColorSynchronize = container.Resolve<IItemByColorSynchronize>();
+            _itemSynchronize = container.Resolve<IItemSynchronize>();
+            _lineSynchronize = container.Resolve<ILineSynchronize>();
+            _moneySynchronize = container.Resolve<IMoneySynchronize>();
+            _packagingSynchronize = container.Resolve<IPackagingSynchronize>();
+            _transitOrderSynchronize = container.Resolve<ITransitOrderSynchronize>();
+            _unitMeasuredSynchronize = container.Resolve<IUnitMeasuredSynchronize>();
+            _updateProcessSynchronize = container.Resolve<IUpdateProcessSynchronize>();
+            _stockSynchronize = container.Resolve<IStockSynchronize>();
             _logger = LogManager.GetCurrentClassLogger();
         }
         private void Sync(string key)
@@ -25,32 +42,56 @@ namespace AutomataExistencias.Console.Jobs
             switch (key)
             {
                 case "MoneyJob":
-                    _synchronize.MoneySync();
+                    _moneySynchronize.Sync();
+                    break;
+                case "MoneyReverseJob":
+                    _moneySynchronize.ReverseSync();
                     break;
                 case "UnitMeasuredJob":
-                    _synchronize.UnitMeasuredSync();
+                    _unitMeasuredSynchronize.Sync();
+                    break;
+                case "UnitMeasuredReverseJob":
+                    _unitMeasuredSynchronize.ReverseSync();
                     break;
                 case "LinesJob":
-                    _synchronize.LinesSync();
+                    _lineSynchronize.Sync();
+                    break;
+                case "LinesReverseJob":
+                    _lineSynchronize.ReverseSync();
                     break;
                 case "ItemsJob":
-                    _synchronize.ItemsSync();
+                    _itemSynchronize.Sync();
+                    break;
+                case "ItemsReverseJob":
+                    _itemSynchronize.ReverseSync();
                     break;
                 case "ItemsByColorJob":
-                    _synchronize.ItemsByColorSync();
+                    _itemByColorSynchronize.Sync();
+                    break;
+                case "ItemsByColorReverseJob":
+                    _itemByColorSynchronize.ReverseSync();
                     break;
                 case "TransitOrderJob":
-                    _synchronize.TransitOrderSync();
+                    _transitOrderSynchronize.Sync();
+                    break;
+                case "TransitOrderReverseJob":
+                    _transitOrderSynchronize.ReverseSync();
                     break;
                 case "StockJob":
-                    _synchronize.StockSync();
+                    _stockSynchronize.Sync();
                     break;
-                case "UpdateProcessJob":
-                    _synchronize.UpdateProcess();
+                case "StockReverseJob":
+                    _stockSynchronize.ReverseSync();
                     break;
                 case "PackagingJob":
-                    _synchronize.PackagingSync();
+                    _packagingSynchronize.Sync();
                     break;
+                case "PackagingReverseJob":
+                    _packagingSynchronize.ReverseSync();
+                    break;
+                case "UpdateProcessJob":
+                    _updateProcessSynchronize.UpdateProcess();
+                    break;                
                 default:
                     _logger.Warn($"Key [{key}] not identified");
                     break;
@@ -60,7 +101,12 @@ namespace AutomataExistencias.Console.Jobs
         public void Execute(IJobExecutionContext context)
         {
             var scheduleSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence"].Split(';').ToList();
-            foreach (var jobKey in scheduleSequence)
+            var scheduleReverseSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence.Reverse"].Split(';').ToList();
+
+            var schedule = scheduleSequence;
+            schedule.AddRange(scheduleReverseSequence);
+
+            foreach (var jobKey in schedule)
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
                 _logger.Info($"[{jobKey}] has started");
@@ -70,7 +116,7 @@ namespace AutomataExistencias.Console.Jobs
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"An exception has occurred while Sync of {jobKey} | Exception: {ex.ToJson()}");
+                    _logger.Error($"An exception has occurred while execution of {jobKey} | Exception: {ex.ToJson()}");
                 }
                 finally
                 {
@@ -79,7 +125,6 @@ namespace AutomataExistencias.Console.Jobs
                     _logger.Info($"[{jobKey}] has finished in {elapsedMs.ToReadableString()}");
                 }
             }
-
         }
     }
 }

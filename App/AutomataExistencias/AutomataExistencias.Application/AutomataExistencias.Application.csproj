@@ -61,10 +61,42 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ISynchronize.cs" />
+    <Compile Include="IItemByColorSynchronize.cs" />
+    <Compile Include="IItemSynchronize.cs" />
+    <Compile Include="ILineSynchronize.cs" />
+    <Compile Include="IMoneySynchronize.cs" />
+    <Compile Include="IPackagingSynchronize.cs" />
+    <Compile Include="IStockSynchronize.cs" />
+    <Compile Include="IUpdateProcessSynchronize.cs" />
+    <Compile Include="ItemByColorSynchronize.cs">
+      <DependentUpon>IItemByColorSynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ItemSynchronize.cs">
+      <DependentUpon>IItemSynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITransitOrderSynchronize.cs" />
+    <Compile Include="IUnitMeasuredSynchronize.cs" />
+    <Compile Include="LineSynchronize.cs">
+      <DependentUpon>ILineSynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MoneySynchronize.cs">
+      <DependentUpon>IMoneySynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PackagingSynchronize.cs">
+      <DependentUpon>IPackagingSynchronize.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Synchronize.cs">
-      <DependentUpon>ISynchronize.cs</DependentUpon>
+    <Compile Include="StockSynchronize.cs">
+      <DependentUpon>IStockSynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TransitOrderSynchronize.cs">
+      <DependentUpon>ITransitOrderSynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UnitMeasuredSynchronize.cs">
+      <DependentUpon>IUnitMeasuredSynchronize.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UpdateProcessSynchronize.cs">
+      <DependentUpon>IUpdateProcessSynchronize.cs</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>

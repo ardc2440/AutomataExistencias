@@ -53,7 +53,15 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.PackagingService>().As<Domain.Aldebaran.IPackagingService>();
 
             /*Sync*/
-            builder.RegisterType<Synchronize>().As<ISynchronize>();
+            builder.RegisterType<ItemByColorSynchronize>().As<IItemByColorSynchronize>();
+            builder.RegisterType<ItemSynchronize>().As<IItemSynchronize>();
+            builder.RegisterType<LineSynchronize>().As<ILineSynchronize>();
+            builder.RegisterType<MoneySynchronize>().As<IMoneySynchronize>();
+            builder.RegisterType<PackagingSynchronize>().As<IPackagingSynchronize>();
+            builder.RegisterType<StockSynchronize>().As<IStockSynchronize>();
+            builder.RegisterType<UpdateProcessSynchronize>().As<IUpdateProcessSynchronize>();
+            builder.RegisterType<TransitOrderSynchronize>().As<ITransitOrderSynchronize>();
+            builder.RegisterType<UnitMeasuredSynchronize>().As<IUnitMeasuredSynchronize>();
 
             /*Jobs*/
             builder.RegisterType<JobSchedulerFactory>().As<IJobSchedulerFactory>();
