@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autofac;
 using AutomataExistencias.Application;
 using AutomataExistencias.Test.Code;
@@ -19,6 +20,15 @@ namespace AutomataExistencias.Test.Sync
         private readonly IUnitMeasuredSynchronize _unitMeasuredSynchronize;
         private readonly IUpdateProcessSynchronize _updateProcessSynchronize;
 
+        
+        private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
+        private readonly Domain.Aldebaran.IItemService _aldebaranItemService;
+        private readonly Domain.Aldebaran.ILineService _aldebaranLineService;
+        private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
+        private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
+        private readonly Domain.Aldebaran.IStockService _aldebaranStockService;
+        private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
+        private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
         public SyncTest()
         {
             var container = GetContainer();
@@ -31,6 +41,15 @@ namespace AutomataExistencias.Test.Sync
             _unitMeasuredSynchronize = container.Resolve<IUnitMeasuredSynchronize>();
             _updateProcessSynchronize = container.Resolve<IUpdateProcessSynchronize>();
             _stockSynchronize = container.Resolve<IStockSynchronize>();
+
+            _aldebaranItemByColorService = container.Resolve<Domain.Aldebaran.IItemByColorService>();
+            _aldebaranItemService = container.Resolve<Domain.Aldebaran.IItemService>();
+            _aldebaranLineService = container.Resolve<Domain.Aldebaran.ILineService>();
+            _aldebaranMoneyService = container.Resolve<Domain.Aldebaran.IMoneyService>();
+            _aldebaranPackagingService = container.Resolve<Domain.Aldebaran.IPackagingService>();
+            _aldebaranStockService = container.Resolve<Domain.Aldebaran.IStockService>();
+            _aldebaranTransitOrderService = container.Resolve<Domain.Aldebaran.ITransitOrderService>();
+            _aldebaranUnitMeasuredService = container.Resolve<Domain.Aldebaran.IUnitMeasuredService>();
         }
 
         [TestMethod]
@@ -38,14 +57,15 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _moneySynchronize.Sync();
-                _unitMeasuredSynchronize.Sync();
-                _lineSynchronize.Sync();
-                _itemSynchronize.Sync();
-                _itemByColorSynchronize.Sync();
-                _transitOrderSynchronize.Sync();
-                _stockSynchronize.Sync();
-                _packagingSynchronize.Sync();
+                var attempts = 2;
+                _moneySynchronize.Sync(_aldebaranMoneyService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _unitMeasuredSynchronize.Sync(_aldebaranUnitMeasuredService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _lineSynchronize.Sync(_aldebaranLineService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _itemSynchronize.Sync(_aldebaranItemService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _itemByColorSynchronize.Sync(_aldebaranItemByColorService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _transitOrderSynchronize.Sync(_aldebaranTransitOrderService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _stockSynchronize.Sync(_aldebaranStockService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _packagingSynchronize.Sync(_aldebaranPackagingService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
                 _updateProcessSynchronize.UpdateProcess();
             }
             catch (Exception ex)
@@ -59,14 +79,15 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _moneySynchronize.ReverseSync();
-                _unitMeasuredSynchronize.ReverseSync();
-                _lineSynchronize.ReverseSync();
-                _itemSynchronize.ReverseSync();
-                _itemByColorSynchronize.ReverseSync();
-                _transitOrderSynchronize.ReverseSync();
-                _stockSynchronize.ReverseSync();
-                _packagingSynchronize.ReverseSync();
+                var attempts = 2;
+                _moneySynchronize.ReverseSync(_aldebaranMoneyService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _unitMeasuredSynchronize.ReverseSync(_aldebaranUnitMeasuredService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _lineSynchronize.ReverseSync(_aldebaranLineService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _itemSynchronize.ReverseSync(_aldebaranItemService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _itemByColorSynchronize.ReverseSync(_aldebaranItemByColorService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _transitOrderSynchronize.ReverseSync(_aldebaranTransitOrderService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _stockSynchronize.ReverseSync(_aldebaranStockService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
+                _packagingSynchronize.ReverseSync(_aldebaranPackagingService.Get(attempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
                 _updateProcessSynchronize.UpdateProcess();
             }
             catch (Exception ex)

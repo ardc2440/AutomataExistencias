@@ -156,6 +156,10 @@
       <Project>{74096E46-3114-49B3-B305-2F2B13019774}</Project>
       <Name>AutomataExistencias.DataAccess.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\AutomataExistencias.DataAccess\AutomataExistencias.DataAccess.csproj">
+      <Project>{8C9BD59D-3B91-43EA-A5F7-F8951348906F}</Project>
+      <Name>AutomataExistencias.DataAccess</Name>
+    </ProjectReference>
     <ProjectReference Include="..\AutomataExistencias.Domain.Aldebaran\AutomataExistencias.Domain.Aldebaran.csproj">
       <Project>{F17A9E5C-5C4C-4FF7-AF14-622C0826F858}</Project>
       <Name>AutomataExistencias.Domain.Aldebaran</Name>

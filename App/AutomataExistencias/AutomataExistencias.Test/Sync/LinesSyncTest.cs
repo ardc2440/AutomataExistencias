@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autofac;
 using AutomataExistencias.Application;
 using AutomataExistencias.Test.Code;
@@ -10,11 +11,12 @@ namespace AutomataExistencias.Test.Sync
     public class LinesSyncTest: AutofacConfigurator
     {
         private readonly ILineSynchronize _lineSynchronize;
-
+        private readonly Domain.Aldebaran.ILineService _aldebaranLineService;
         public LinesSyncTest()
         {
             var container = GetContainer();
             _lineSynchronize = container.Resolve<ILineSynchronize>();
+            _aldebaranLineService = container.Resolve<Domain.Aldebaran.ILineService>();
         }
 
         [TestMethod]
@@ -22,7 +24,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _lineSynchronize.Sync();
+                var attempts = 2;
+                var data = _aldebaranLineService.Get(attempts);
+                _lineSynchronize.Sync(data.Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {
@@ -35,7 +39,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _lineSynchronize.ReverseSync();
+                var attempts = 2;
+                var data = _aldebaranLineService.Get(attempts);
+                _lineSynchronize.ReverseSync(data.Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {

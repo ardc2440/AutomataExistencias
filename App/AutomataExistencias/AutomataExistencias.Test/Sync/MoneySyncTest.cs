@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autofac;
 using AutomataExistencias.Application;
 using AutomataExistencias.Test.Code;
@@ -10,11 +11,12 @@ namespace AutomataExistencias.Test.Sync
     public class MoneySyncTest : AutofacConfigurator
     {
         private readonly IMoneySynchronize _moneySynchronize;
-
+        private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
         public MoneySyncTest()
         {
             var container = GetContainer();
             _moneySynchronize = container.Resolve<IMoneySynchronize>();
+            _aldebaranMoneyService = container.Resolve<Domain.Aldebaran.IMoneyService>();
         }
 
         [TestMethod]
@@ -22,7 +24,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _moneySynchronize.Sync();
+                var attempts = 2;
+                var data = _aldebaranMoneyService.Get(attempts);
+                _moneySynchronize.Sync(data.Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {
@@ -35,7 +39,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _moneySynchronize.ReverseSync();
+                var attempts = 2;
+                var data = _aldebaranMoneyService.Get(attempts);
+                _moneySynchronize.ReverseSync(data.Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autofac;
 using AutomataExistencias.Application;
 using AutomataExistencias.Test.Code;
@@ -10,11 +11,12 @@ namespace AutomataExistencias.Test.Sync
     public class TransitOrderSyncTest: AutofacConfigurator
     {
         private readonly ITransitOrderSynchronize _transitOrderSynchronize;
-
+        private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
         public TransitOrderSyncTest(ITransitOrderSynchronize transitOrderSynchronize)
         {
             var container = GetContainer();
             _transitOrderSynchronize = container.Resolve<ITransitOrderSynchronize>();
+            _aldebaranTransitOrderService = container.Resolve<Domain.Aldebaran.ITransitOrderService>();
         }
 
         [TestMethod]
@@ -22,7 +24,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _transitOrderSynchronize.Sync();
+                var attempts = 2;
+                var data = _aldebaranTransitOrderService.Get(attempts);
+                _transitOrderSynchronize.Sync(data.Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {
@@ -35,7 +39,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _transitOrderSynchronize.ReverseSync();
+                var attempts = 2;
+                var data = _aldebaranTransitOrderService.Get(attempts);
+                _transitOrderSynchronize.ReverseSync(data.Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {

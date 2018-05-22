@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autofac;
 using AutomataExistencias.Application;
 using AutomataExistencias.Test.Code;
@@ -10,11 +11,12 @@ namespace AutomataExistencias.Test.Sync
     public class StockSyncTest : AutofacConfigurator
     {
         private readonly IStockSynchronize _stockSynchronize;
-
+        private readonly Domain.Aldebaran.IStockService _aldebaranStockService;
         public StockSyncTest()
         {
             var container = GetContainer();
             _stockSynchronize = container.Resolve<IStockSynchronize>();
+            _aldebaranStockService = container.Resolve<Domain.Aldebaran.IStockService>();
         }
 
         [TestMethod]
@@ -22,7 +24,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _stockSynchronize.Sync();
+                var attempts = 2;
+                var data = _aldebaranStockService.Get(attempts);
+                _stockSynchronize.Sync(data.Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {
@@ -35,7 +39,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _stockSynchronize.ReverseSync();
+                var attempts = 2;
+                var data = _aldebaranStockService.Get(attempts);
+                _stockSynchronize.ReverseSync(data.Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {

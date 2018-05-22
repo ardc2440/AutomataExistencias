@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
+using AutomataExistencias.DataAccess.Aldebaran;
 using Newtonsoft.Json;
 using NLog;
 
@@ -13,17 +14,15 @@ namespace AutomataExistencias.Application
         /*Aldebaran*/
         private readonly Domain.Aldebaran.IStockService _aldebaranStockService;
         private readonly Domain.Cataprom.IStockService _catapromStockService;
-        private readonly int _syncAttempts;
-        public StockSynchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Cataprom.IStockService catapromStockService, IConfigurator configurator)
+        public StockSynchronize(Domain.Aldebaran.IStockService aldebaranStockService, Domain.Cataprom.IStockService catapromStockService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranStockService = aldebaranStockService;
             _catapromStockService = catapromStockService;
-            _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
         }
-        public void Sync()
+        public void Sync(IEnumerable<Stock> data, int syncAttempts)
         {
-            var dataFirebird = _aldebaranStockService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Firebird to Sql [StockSync]");
@@ -51,11 +50,11 @@ namespace AutomataExistencias.Application
                 catch (Exception ex)
                 {
                     item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < _syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Stock from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < syncAttempts)
+                        _logger.Error($"Internal error when trying to insert/update a Stock from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to insert/update a Stock from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Stock from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranStockService.Update(item);
                 }
                 finally
@@ -67,9 +66,9 @@ namespace AutomataExistencias.Application
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from Stock sql table");
         }
-        public void ReverseSync()
+        public void ReverseSync(IEnumerable<Stock> data, int syncAttempts)
         {
-            var dataFirebird = _aldebaranStockService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Firebird to Sql [StockReverseSync]");
@@ -92,11 +91,11 @@ namespace AutomataExistencias.Application
                 catch (Exception ex)
                 {
                     item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < _syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Stock from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < syncAttempts)
+                        _logger.Error($"Internal error when trying to delete a Stock from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to delete a Stock from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Stock from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranStockService.Update(item);
                 }
                 finally

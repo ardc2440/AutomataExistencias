@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
+using AutomataExistencias.DataAccess.Aldebaran;
 using Newtonsoft.Json;
 using NLog;
 
@@ -12,17 +13,15 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
         private readonly Domain.Cataprom.IMoneyService _catapromMoneyService;
-        private readonly int _syncAttempts;
-        public MoneySynchronize(Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Cataprom.IMoneyService catapromMoneyService, IConfigurator configurator)
+        public MoneySynchronize(Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Cataprom.IMoneyService catapromMoneyService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranMoneyService = aldebaranMoneyService;
             _catapromMoneyService = catapromMoneyService;
-            _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
         }
-        public void Sync()
+        public void Sync(IEnumerable<Money> data, int syncAttempts)
         {
-            var dataFirebird = _aldebaranMoneyService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Firebird to Sql [MoneySync]");
@@ -48,11 +47,11 @@ namespace AutomataExistencias.Application
                 catch (Exception ex)
                 {
                     item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < _syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Money from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < syncAttempts)
+                        _logger.Error($"Internal error when trying to insert/update a Money from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to insert/update a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranMoneyService.Update(item);
                 }
                 finally
@@ -64,9 +63,9 @@ namespace AutomataExistencias.Application
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from Money sql table");
         }
-        public void ReverseSync()
+        public void ReverseSync(IEnumerable<Money> data, int syncAttempts)
         {
-            var dataFirebird = _aldebaranMoneyService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Firebird to Sql [MoneyReverseSync]");
@@ -87,11 +86,11 @@ namespace AutomataExistencias.Application
                 catch (Exception ex)
                 {
                     item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < _syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Money from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < syncAttempts)
+                        _logger.Error($"Internal error when trying to delete a Money from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to delete a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranMoneyService.Update(item);
                 }
                 finally

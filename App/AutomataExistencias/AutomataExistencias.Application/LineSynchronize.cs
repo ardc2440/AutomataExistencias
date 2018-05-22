@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
+using AutomataExistencias.DataAccess.Aldebaran;
 using Newtonsoft.Json;
 using NLog;
 
@@ -12,17 +13,15 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.ILineService _aldebaranLineService;
         private readonly Domain.Cataprom.ILineService _catapromLineService;
-        private readonly int _syncAttempts;
-        public LineSynchronize(Domain.Aldebaran.ILineService aldebaranLineService, Domain.Cataprom.ILineService catapromLineService, IConfigurator configurator)
+        public LineSynchronize(Domain.Aldebaran.ILineService aldebaranLineService, Domain.Cataprom.ILineService catapromLineService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranLineService = aldebaranLineService;
             _catapromLineService = catapromLineService;
-            _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
         }
-        public void Sync()
+        public void Sync(IEnumerable<Line> data, int syncAttempts)
         {
-            var dataFirebird = _aldebaranLineService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Firebird to Sql [LinesSync]");
@@ -50,11 +49,11 @@ namespace AutomataExistencias.Application
                 catch (Exception ex)
                 {
                     item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < _syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Line from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < syncAttempts)
+                        _logger.Error($"Internal error when trying to insert/update a Line from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to insert/update a Line from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Line from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranLineService.Update(item);
                 }
                 finally
@@ -66,9 +65,9 @@ namespace AutomataExistencias.Application
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from Line sql table");
         }
-        public void ReverseSync()
+        public void ReverseSync(IEnumerable<Line> data, int syncAttempts)
         {
-            var dataFirebird = _aldebaranLineService.Get(_syncAttempts).Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)).ToList();
+            var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Firebird to Sql [LinesReverseSync]");
@@ -89,11 +88,11 @@ namespace AutomataExistencias.Application
                 catch (Exception ex)
                 {
                     item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{_syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < _syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Line from firebird to sql ({item.Attempts}/{_syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                    if (item.Attempts < syncAttempts)
+                        _logger.Error($"Internal error when trying to delete a Line from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{_syncAttempts}) when trying to delete a Line from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Line from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranLineService.Update(item);
                 }
                 finally

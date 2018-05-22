@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Autofac;
 using AutomataExistencias.Application;
 using AutomataExistencias.Test.Code;
@@ -10,11 +11,12 @@ namespace AutomataExistencias.Test.Sync
     public class PackagingSyncTest: AutofacConfigurator
     {
         private readonly IPackagingSynchronize _packagingSynchronize;
-
+        private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
         public PackagingSyncTest()
         {
             var container = GetContainer();
             _packagingSynchronize = container.Resolve<IPackagingSynchronize>();
+            _aldebaranPackagingService = container.Resolve<Domain.Aldebaran.IPackagingService>();
         }
 
         [TestMethod]
@@ -22,7 +24,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _packagingSynchronize.Sync();
+                var attempts = 2;
+                var data = _aldebaranPackagingService.Get(attempts);
+                _packagingSynchronize.Sync(data.Where(w => string.Equals(w.Action, "I", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {
@@ -35,7 +39,9 @@ namespace AutomataExistencias.Test.Sync
         {
             try
             {
-                _packagingSynchronize.ReverseSync();
+                var attempts = 2;
+                var data = _aldebaranPackagingService.Get(attempts);
+                _packagingSynchronize.ReverseSync(data.Where(w => string.Equals(w.Action, "D", StringComparison.CurrentCultureIgnoreCase)), attempts);
             }
             catch (Exception ex)
             {
