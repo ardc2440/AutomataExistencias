@@ -42,7 +42,7 @@ namespace AutomataExistencias.Application
                         DeliveredQuantity = item.DeliveredQuantity.NullTo(),
                         Date = item.Date.NullTo(DateTime.Now),
                         Activity = item.Activity,
-                        ColorItemId = item.ColorItemId.NullTo(),
+                        ColorItemId = item.ColorItemId.NullTo()                        
                     });
                     _catapromTransitOrderService.SaveChanges();
                     _aldebaranTransitOrderService.Remove(item);

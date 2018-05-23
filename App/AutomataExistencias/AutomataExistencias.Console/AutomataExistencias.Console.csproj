@@ -122,6 +122,7 @@
     <Compile Include="Code\AldebaranApplicationEnvironment.cs" />
     <Compile Include="Code\AutofacConfigurator.cs" />
     <Compile Include="Code\CatapromApplicationEnvironment.cs" />
+    <Compile Include="Jobs\CleanerJob.cs" />
     <Compile Include="Jobs\SyncJob.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -131,7 +132,9 @@
     <Compile Include="Service.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="job_scheduling_data_2_0.xsd">
       <SubType>Designer</SubType>
     </None>

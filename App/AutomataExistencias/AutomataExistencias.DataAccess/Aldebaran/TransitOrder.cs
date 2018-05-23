@@ -19,7 +19,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
 
         [Column("CANTIDADREC")]
         public int? DeliveredQuantity { get; set; }
-        
+
         [Column("FECHA")]
         public DateTime? Date { get; set; }
 
@@ -34,6 +34,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
 
         [Column("INTENTOS")]
         public int Attempts { get; set; }
+
         [Column("ERROR")]
         public string Exception { get; set; }
     }

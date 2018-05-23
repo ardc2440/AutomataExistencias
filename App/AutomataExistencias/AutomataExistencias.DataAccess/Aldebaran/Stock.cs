@@ -9,23 +9,31 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Key]
         [Column("ID")]
         public int Id { get; set; }
+
         [Column("IDITEMXCOLOR")]
         public int ColorItemId { get; set; }
+
         [Column("IDITEM")]
         public int ItemId { get; set; }
+
         [Column("IDBODEGA")]
         public int StorageCellarId { get; set; }
+
         [Column("COLOR")]
         public string Color { get; set; }
+
         [Column("CANTIDAD")]
         public int Quantity { get; set; }
+
         [Column("BODEGA")]
         public string StorageCellar { get; set; }
+
         [Column("ACCION")]
         public string Action { get; set; }
 
         [Column("INTENTOS")]
         public int Attempts { get; set; }
+
         [Column("ERROR")]
         public string Exception { get; set; }
     }

@@ -9,15 +9,19 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         [Key]
         [Column("ID")]
         public int Id { get; set; }
+
         [Column("IDUNIDAD")]
         public int UnitMeasuredId { get; set; }
+
         [Column("NOMUNIDAD")]
         public string Name { get; set; }
+
         [Column("ACCION")]
         public string Action { get; set; }
 
         [Column("INTENTOS")]
         public int Attempts { get; set; }
+
         [Column("ERROR")]
         public string Exception { get; set; }
     }

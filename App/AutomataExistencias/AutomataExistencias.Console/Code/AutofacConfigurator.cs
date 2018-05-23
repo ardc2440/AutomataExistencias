@@ -28,8 +28,8 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<CatapromApplicationEnvironment>().As<ICatapromApplicationEnvironment>();
 
             /*UnitOfWork*/
-            builder.RegisterType<UnitOfWorkAldebaran>().As<IUnitOfWorkAldebaran>();
-            builder.RegisterType<UnitOfWorkCataprom>().As<IUnitOfWorkCataprom>();
+            builder.RegisterType<UnitOfWorkAldebaran>().As<IUnitOfWorkAldebaran>().InstancePerDependency();
+            builder.RegisterType<UnitOfWorkCataprom>().As<IUnitOfWorkCataprom>().InstancePerDependency();
 
             /*Cataprom*/
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
@@ -51,6 +51,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.TransitOrderService>().As<Domain.Aldebaran.ITransitOrderService>();
             builder.RegisterType<Domain.Aldebaran.UnitMeasuredService>().As<Domain.Aldebaran.IUnitMeasuredService>();
             builder.RegisterType<Domain.Aldebaran.PackagingService>().As<Domain.Aldebaran.IPackagingService>();
+            builder.RegisterType<Domain.Aldebaran.CleanService>().As<Domain.Aldebaran.ICleanService>();
 
             /*Sync*/
             builder.RegisterType<ItemByColorSynchronize>().As<IItemByColorSynchronize>();
@@ -60,6 +61,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<PackagingSynchronize>().As<IPackagingSynchronize>();
             builder.RegisterType<StockSynchronize>().As<IStockSynchronize>();
             builder.RegisterType<UpdateProcessSynchronize>().As<IUpdateProcessSynchronize>();
+            builder.RegisterType<CleanerProcess>().As<ICleanerProcess>();
             builder.RegisterType<TransitOrderSynchronize>().As<ITransitOrderSynchronize>();
             builder.RegisterType<UnitMeasuredSynchronize>().As<IUnitMeasuredSynchronize>();
 

@@ -61,6 +61,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CleanerProcess.cs">
+      <DependentUpon>ICleanerProcess.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ICleanerProcess.cs" />
     <Compile Include="IItemByColorSynchronize.cs" />
     <Compile Include="IItemSynchronize.cs" />
     <Compile Include="ILineSynchronize.cs" />

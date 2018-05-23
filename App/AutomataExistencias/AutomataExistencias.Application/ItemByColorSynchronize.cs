@@ -50,6 +50,7 @@ namespace AutomataExistencias.Application
                         QuantityOrderPan = item.QuantityOrderPan.NullTo(),
                         QuantityPan = item.QuantityPan.NullTo(),
                         QuantityReservedPan = item.QuantityReservedPan.NullTo(),
+                        Active = item.Active,
                         SoldOut = item.SoldOut,
                         QuantityProcess = item.QuantityProcess.NullTo(),
                     });

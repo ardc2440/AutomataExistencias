@@ -86,6 +86,8 @@ namespace AutomataExistencias.Application
                         ColorItemId = item.ColorItemId,
                         StorageCellar = item.StorageCellar
                     });
+                    _catapromStockService.SaveChanges();
+                    _aldebaranStockService.Remove(item);
                     deleted++;
                 }
                 catch (Exception ex)
