@@ -27,7 +27,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public string Activity { get; set; }
 
         [Column("IDITEMXCOLOR")]
-        public short? ColorItemId { get; set; }
+        public int? ColorItemId { get; set; }
 
         [Column("ACCION")]
         public string Action { get; set; }

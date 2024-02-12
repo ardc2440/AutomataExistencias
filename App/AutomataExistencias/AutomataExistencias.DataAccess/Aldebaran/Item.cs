@@ -11,7 +11,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public int Id { get; set; }
 
         [Column("IDITEM")]
-        public short ItemId { get; set; }
+        public int ItemId { get; set; }
 
         [Column("IDLINEA")]
         public short? LineId { get; set; }

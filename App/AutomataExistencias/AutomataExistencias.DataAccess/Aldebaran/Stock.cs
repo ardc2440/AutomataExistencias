@@ -11,10 +11,10 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public int Id { get; set; }
 
         [Column("IDITEMXCOLOR")]
-        public short ColorItemId { get; set; }
+        public int ColorItemId { get; set; }
 
         [Column("IDITEM")]
-        public short ItemId { get; set; }
+        public int ItemId { get; set; }
 
         [Column("IDBODEGA")]
         public short StorageCellarId { get; set; }
