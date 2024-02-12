@@ -54,14 +54,8 @@
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
-    <Reference Include="EntityFramework.Firebird, Version=5.12.1.0, Culture=neutral, PublicKeyToken=42d22d092898e5f8, processorArchitecture=MSIL">
-      <HintPath>..\packages\EntityFramework.Firebird.5.12.1\lib\net452\EntityFramework.Firebird.dll</HintPath>
-    </Reference>
     <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
-    <Reference Include="FirebirdSql.Data.FirebirdClient, Version=5.12.1.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
-      <HintPath>..\packages\FirebirdSql.Data.FirebirdClient.5.12.1\lib\net452\FirebirdSql.Data.FirebirdClient.dll</HintPath>
     </Reference>
     <Reference Include="MailKit, Version=1.22.0.0, Culture=neutral, PublicKeyToken=4e064fe7c44a8f1b, processorArchitecture=MSIL">
       <HintPath>..\packages\MailKit.1.22.0\lib\net451\MailKit.dll</HintPath>

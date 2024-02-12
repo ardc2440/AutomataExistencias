@@ -6,12 +6,12 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("RMONEDAS")]
     public class Money
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
         [Column("IDMONEDA")]
-        public int MoneyId { get; set; }
+        public short MoneyId { get; set; }
 
         [Column("NOMMONEDA")]
         public string Name { get; set; }

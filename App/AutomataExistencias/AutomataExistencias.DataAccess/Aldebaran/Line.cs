@@ -6,12 +6,12 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("RLINEAS")]
     public class Line
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
         [Column("IDLINEA")]
-        public int LineId { get; set; }
+        public short LineId { get; set; }
 
         [Column("CODLINEA")]
         public string Code { get; set; }

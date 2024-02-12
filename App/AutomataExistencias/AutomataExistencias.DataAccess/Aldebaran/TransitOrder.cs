@@ -7,7 +7,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("STRANSITO")]
     public class TransitOrder
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
@@ -27,7 +27,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public string Activity { get; set; }
 
         [Column("IDITEMXCOLOR")]
-        public int? ColorItemId { get; set; }
+        public short? ColorItemId { get; set; }
 
         [Column("ACCION")]
         public string Action { get; set; }

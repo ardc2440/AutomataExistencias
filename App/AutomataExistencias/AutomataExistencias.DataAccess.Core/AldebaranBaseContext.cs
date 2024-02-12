@@ -1,7 +1,7 @@
 ﻿using System.Data.Entity;
+using System.Data.SqlClient;
 using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.DataAccess.Aldebaran;
-using FirebirdSql.Data.FirebirdClient;
 
 namespace AutomataExistencias.DataAccess.Core
 {
@@ -21,7 +21,7 @@ namespace AutomataExistencias.DataAccess.Core
 
         #region Constructors
         public AldebaranBaseContext(IAldebaranApplicationEnvironment applicationEnvironment)
-            : base(new FbConnection(applicationEnvironment.GetConnectionString()),true)
+            : base(new SqlConnection(applicationEnvironment.GetConnectionString()), true)
         {
         }
 

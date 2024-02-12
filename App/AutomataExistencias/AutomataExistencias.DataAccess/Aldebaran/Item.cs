@@ -6,15 +6,15 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("RITEMS")]
     public class Item
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
         [Column("IDITEM")]
-        public int ItemId { get; set; }
+        public short ItemId { get; set; }
 
         [Column("IDLINEA")]
-        public int? LineId { get; set; }
+        public short? LineId { get; set; }
 
         [Column("REFINTERNA")]
         public string Reference { get; set; }
@@ -35,7 +35,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public decimal? FobCost { get; set; }
 
         [Column("IDMONEDA")]
-        public int? MoneyId { get; set; }
+        public short? MoneyId { get; set; }
 
         [Column("TIPPARTE")]
         public string PartType { get; set; }
@@ -59,10 +59,10 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public decimal? Weight { get; set; }
 
         [Column("IDUNIDADFOB")]
-        public int? FobUnitId { get; set; }
+        public short? FobUnitId { get; set; }
 
         [Column("IDUNIDADCIF")]
-        public int? CifUnitId { get; set; }
+        public short? CifUnitId { get; set; }
 
         [Column("PRODNAC")]
         public string NationalProduct { get; set; }

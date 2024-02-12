@@ -24,10 +24,10 @@ namespace AutomataExistencias.Application
             var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
-                _logger.Info("No records to insert/update from Firebird to Sql [MoneySync]");
+                _logger.Info("No records to insert/update from Aldebaran to Cataprom [MoneySync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Firebird to Sql [MoneySync]");
+            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Aldebaran to Cataprom [MoneySync]");
 
             var inserted = 0;
             foreach (var item in dataFirebird)
@@ -49,9 +49,9 @@ namespace AutomataExistencias.Application
                     item.Attempts++;
                     item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                     if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Money from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Error($"Internal error when trying to insert/update a Money from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Money from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranMoneyService.Update(item);
                 }
                 finally
@@ -68,10 +68,10 @@ namespace AutomataExistencias.Application
             var dataFirebird = data.ToList();
             if (!dataFirebird.Any())
             {
-                _logger.Info("No records to delete from Firebird to Sql [MoneyReverseSync]");
+                _logger.Info("No records to delete from Aldebaran to Cataprom [MoneyReverseSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} records to delete from Firebird to Sql [MoneyReverseSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to delete from Aldebaran to Cataprom [MoneyReverseSync]");
 
             var deleted = 0;
             foreach (var item in dataFirebird)
@@ -88,9 +88,9 @@ namespace AutomataExistencias.Application
                     item.Attempts++;
                     item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                     if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Money from firebird to sql ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Error($"Internal error when trying to delete a Money from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Money from firebird to sql. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Money from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     _aldebaranMoneyService.Update(item);
                 }
                 finally

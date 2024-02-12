@@ -6,15 +6,15 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("REMBALAJES")]
     public class Packaging
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
         [Column("IDEMBALAJE")]
-        public int PackagingId { get; set; }
+        public short PackagingId { get; set; }
 
         [Column("IDITEM")]
-        public int? ItemId { get; set; }
+        public short? ItemId { get; set; }
 
         [Column("PESO")]
         public decimal? Weight { get; set; }

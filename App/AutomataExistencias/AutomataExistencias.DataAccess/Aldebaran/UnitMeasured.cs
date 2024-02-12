@@ -6,12 +6,12 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("RUNIDADESMEDIDA")]
     public class UnitMeasured
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
         [Column("IDUNIDAD")]
-        public int UnitMeasuredId { get; set; }
+        public short UnitMeasuredId { get; set; }
 
         [Column("NOMUNIDAD")]
         public string Name { get; set; }

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Data;
+using System.Data.SqlClient;
 using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
 using AutomataExistencias.DataAccess.Core.Contract;
-using FirebirdSql.Data.FirebirdClient;
 using NLog;
 
 namespace AutomataExistencias.Domain.Aldebaran
@@ -19,12 +19,12 @@ namespace AutomataExistencias.Domain.Aldebaran
 
         public void Clean(int daysToKeep)
         {
-            using (var connection = new FbConnection(_connectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
-                using (var command = new FbCommand("BORRARINTEGRACION", connection))
+                using (var command = new SqlCommand("SP_BORRAR_INTEGRACION", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@NUMERODIAS", daysToKeep);
+                    command.Parameters.AddWithValue("@DAYS_NUMBER", daysToKeep);
                     try
                     {
                         connection.Open();

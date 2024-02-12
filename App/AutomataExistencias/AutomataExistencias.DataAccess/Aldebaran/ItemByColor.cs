@@ -6,15 +6,15 @@ namespace AutomataExistencias.DataAccess.Aldebaran
     [Table("RITEMSXCOLOR")]
     public class ItemByColor
     {
-        [Key]
+        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("ID")]
         public int Id { get; set; }
 
         [Column("IDITEMXCOLOR")]
-        public int ColorItemId { get; set; }
+        public short ColorItemId { get; set; }
 
         [Column("IDITEM")]
-        public int? ItemId { get; set; }
+        public short? ItemId { get; set; }
 
         [Column("REFITEMXCOLOR")]
         public string ItemByColorReference { get; set; }

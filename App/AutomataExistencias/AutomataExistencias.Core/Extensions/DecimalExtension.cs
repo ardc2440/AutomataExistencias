@@ -6,5 +6,10 @@
         {
             return value ?? @default;
         }
+
+        public static int NullTo(this short? value, int @default = 0)
+        {
+            return value ?? @default;
+        }
     }
 }
