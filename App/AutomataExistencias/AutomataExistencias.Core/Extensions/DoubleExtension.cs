@@ -1,8 +1,8 @@
 ﻿namespace AutomataExistencias.Core.Extensions
 {
-    public static class DecimalExtension
+    public static class DoubleExtension
     {
-        public static decimal NullTo(this decimal? value, decimal @default = 0)
+        public static double NullTo(this double? value, double @default = 0)
         {
             return value ?? @default;
         }

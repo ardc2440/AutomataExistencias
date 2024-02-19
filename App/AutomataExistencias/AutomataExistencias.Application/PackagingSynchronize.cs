@@ -39,10 +39,10 @@ namespace AutomataExistencias.Application
                     {
                         Id = item.PackagingId,
                         ItemId = item.ItemId,
-                        Weight = item.Weight,
-                        Height = item.Height,
-                        Width = item.Width,
-                        Long = item.Long,
+                        Weight = (decimal)item.Weight,
+                        Height = (decimal)item.Height,
+                        Width = (decimal)item.Width,
+                        Long = (decimal)item.Long,
                         Quantity = item.Quantity
                     });
                     _catapromPackagingService.SaveChanges();

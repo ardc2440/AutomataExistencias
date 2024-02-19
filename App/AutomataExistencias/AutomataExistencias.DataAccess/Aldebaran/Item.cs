@@ -32,7 +32,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public string ItemType { get; set; }
 
         [Column("COSTOFOB")]
-        public decimal? FobCost { get; set; }
+        public double? FobCost { get; set; }
 
         [Column("IDMONEDA")]
         public short? MoneyId { get; set; }
@@ -53,10 +53,10 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public string CifCost { get; set; }
 
         [Column("VOLUMEN")]
-        public decimal? Volume { get; set; }
+        public double? Volume { get; set; }
 
         [Column("PESO")]
-        public decimal? Weight { get; set; }
+        public double? Weight { get; set; }
 
         [Column("IDUNIDADFOB")]
         public short? FobUnitId { get; set; }

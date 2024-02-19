@@ -150,11 +150,11 @@ CREATE TABLE rexistencias
 (
   ID INTEGER NOT NULL IDENTITY(1,1),
   IDITEMXCOLOR INT NOT NULL,
-  IDITEM INT,
+  IDITEM INT NOT NULL,
   IDBODEGA SMALLINT NOT NULL,
-  COLOR VARCHAR(30),
-  CANTIDAD INTEGER ,
-  BODEGA VARCHAR(30) ,
+  COLOR VARCHAR(30) NOT NULL,
+  CANTIDAD INTEGER NOT NULL ,
+  BODEGA VARCHAR(30) NOT NULL,
   ACCION CHAR(1) NOT NULL,
   INTENTOS INTEGER DEFAULT 0 NOT NULL,
   ERROR VARCHAR(MAX),
@@ -317,18 +317,18 @@ BEGIN
 								   AND b.IS_ACTIVE = 1)
                 
 			/* eliminar todas las existencias en bodega de la linea */
-			INSERT INTO REXISTENCIAS (IdItemxColor, IdBodega, Accion)
-                 SELECT a.REFERENCE_ID, a.WAREHOUSE_ID, 'D' 
+			INSERT INTO REXISTENCIAS (IdItemxColor, IdItem, IdBodega, Cantidad, Color, bodega, Accion)
+                 SELECT a.REFERENCE_ID, b.ITEM_ID, a.WAREHOUSE_ID, a.QUANTITY, b.REFERENCE_NAME, d.WAREHOUSE_NAME, 'D' 
                    FROM REFERENCES_WAREHOUSE a
-				  WHERE EXISTS (SELECT 1 FROM ITEM_REFERENCES b 
-								  JOIN ITEMS c ON c.ITEM_ID = b.ITEM_ID
-											  AND c.IS_CATALOG_VISIBLE = 1
-											  AND c.IS_ACTIVE = 1
-								  JOIN INSERTED e ON e.LINE_ID = c.LINE_ID 
-				                 WHERE b.REFERENCE_ID = a.REFERENCE_ID)
-				    AND EXISTS (SELECT 1 FROM WAREHOUSES d 
-								 WHERE d.WAREHOUSE_ID = a.WAREHOUSE_ID
-								   AND d.IS_CATALOG_VISIBLE = 1)
+                   JOIN ITEM_REFERENCES b ON b.REFERENCE_ID = a.REFERENCE_ID
+										 AND b.IS_ACTIVE = 1
+                   JOIN WAREHOUSES d ON d.WAREHOUSE_ID = a.WAREHOUSE_ID				   
+									AND d.IS_CATALOG_VISIBLE = 1 
+                  WHERE EXISTS (SELECT 1 FROM ITEMS c 
+								  JOIN INSERTED e ON e.LINE_ID = c.LINE_ID
+								 WHERE c.ITEM_ID = b.ITEM_ID                   
+								   AND c.IS_ACTIVE = 1
+								   AND c.IS_CATALOG_VISIBLE = 1)
 
 			/* eliminar todas las ordenes en transito de la linea */
 			INSERT INTO STRANSITO (IDITEMTRANSITO, Accion)
@@ -462,16 +462,14 @@ BEGIN
                  WHERE a.IS_ACTIVE = 1
                    
 			/* eliminar todas las existencias en bodega del item */
-			INSERT INTO REXISTENCIAS (IdItemxColor, IdBodega, Accion)
-                SELECT a.REFERENCE_ID, a.WAREHOUSE_ID, 'D' 
-                  FROM REFERENCES_WAREHOUSE a
-				 WHERE EXISTS(SELECT 1 FROM ITEM_REFERENCES b 
-								JOIN INSERTED e ON e.ITEM_ID = b.ITEM_ID
-				               WHERE b.REFERENCE_ID = a.REFERENCE_ID
-								 AND b.IS_ACTIVE = 1)
-				   AND EXISTS(SELECT 1 FROM WAREHOUSES d 
-				               WHERE d.WAREHOUSE_ID = a.WAREHOUSE_ID
-							     AND d.IS_CATALOG_VISIBLE = 1) 
+			INSERT INTO REXISTENCIAS (IdItemxColor, IdItem, IdBodega, Cantidad, Color, bodega, Accion)
+                 SELECT a.REFERENCE_ID, b.ITEM_ID, a.WAREHOUSE_ID, a.QUANTITY, b.REFERENCE_NAME, d.WAREHOUSE_NAME, 'D' 
+                   FROM REFERENCES_WAREHOUSE a
+                   JOIN ITEM_REFERENCES b ON b.REFERENCE_ID = a.REFERENCE_ID
+										 AND b.IS_ACTIVE = 1
+                   JOIN INSERTED c ON c.ITEM_ID = b.ITEM_ID                  
+				   JOIN WAREHOUSES d ON d.WAREHOUSE_ID = a.WAREHOUSE_ID
+				                    AND d.IS_CATALOG_VISIBLE = 1 
 
 			/* eliminar todas las ordenes en transito del item */
 			INSERT INTO STRANSITO (IDITEMTRANSITO, Accion)
@@ -568,17 +566,16 @@ BEGIN
 		IF (@newActivo = 0)
 		BEGIN      
 			/* eliminar todas las existencias en bodega del item */
-			INSERT INTO REXISTENCIAS (IDITEMXCOLOR, IDBODEGA, ACCION)
-                SELECT a.REFERENCE_ID, a.WAREHOUSE_ID, 'D' 
-                  FROM REFERENCES_WAREHOUSE a
-                 WHERE EXISTS(SELECT 1 FROM WAREHOUSES d
-				               WHERE d.WAREHOUSE_ID = a.WAREHOUSE_ID
-								 AND d.IS_CATALOG_VISIBLE = 1)
-				   AND EXISTS(SELECT 1 FROM DELETED b
-								JOIN ITEMS c ON c.ITEM_ID = b.ITEM_ID
-							                AND c.IS_ACTIVE = 1
-							                AND c.IS_CATALOG_VISIBLE = 1
-							   WHERE b.REFERENCE_ID = a.REFERENCE_ID)
+			INSERT INTO REXISTENCIAS (IdItemxColor, IdItem, IdBodega, Cantidad, Color, bodega, Accion)
+                     SELECT b.REFERENCE_ID, b.ITEM_ID, d.WAREHOUSE_ID, a.QUANTITY, b.REFERENCE_NAME, d.WAREHOUSE_NAME, 'D' 
+                       FROM REFERENCES_WAREHOUSE a
+                       JOIN WAREHOUSES d ON d.WAREHOUSE_ID = a.WAREHOUSE_ID	
+									    AND d.IS_CATALOG_VISIBLE = 1 
+					   JOIN INSERTED b ON b.REFERENCE_ID = a.REFERENCE_ID
+                      WHERE EXISTS (SELECT 1 FROM ITEMS c 
+									 WHERE c.ITEM_ID = b.ITEM_ID
+									   AND c.IS_ACTIVE = 1
+									   AND c.IS_CATALOG_VISIBLE = 1)
                    
 			/* eliminar todas las ordenes en transito del item */
 			INSERT INTO STRANSITO (IDITEMTRANSITO, Accion)
@@ -659,6 +656,7 @@ BEGIN
 	SET NOCOUNT ON;
 	
 	DECLARE @warehouseId INT 
+	DECLARE @actualizationType CHAR(1) = 'D'
 
 	IF EXISTS(SELECT 1 FROM DELETED) 
 		SELECT @warehouseId = WAREHOUSE_ID FROM DELETED
@@ -669,32 +667,24 @@ BEGIN
 	
 	IF (@isWarehouseVisible = 1)
 	BEGIN
-		IF ((SELECT COUNT(1) FROM DELETED) > 0 AND (SELECT COUNT(1) FROM INSERTED) = 0) 		         
-			INSERT INTO REXISTENCIAS (IdItemxColor, IdBodega, Accion)
-				 SELECT a.REFERENCE_ID, a.WAREHOUSE_ID, 'D'
-				   FROM DELETED a 
-				  WHERE EXISTS (SELECT 1 FROM ITEM_REFERENCES b
-								  JOIN ITEMS c ON c.ITEM_ID = b.ITEM_ID
-											  AND c.IS_CATALOG_VISIBLE = 1	
-											  AND c.IS_ACTIVE = 1
-								 WHERE b.REFERENCE_ID = a.REFERENCE_ID
-								   AND b.IS_ACTIVE = 1)					
-		ELSE
-			INSERT INTO REXISTENCIAS (IdItemxColor, IdItem, IdBodega, Cantidad, Color, bodega, Accion)
-				 SELECT a.REFERENCE_ID, b.ITEM_ID, a.WAREHOUSE_ID, a.QUANTITY, b.REFERENCE_NAME, c.WAREHOUSE_NAME, 'I'				 
-				   FROM INSERTED a
-				   JOIN ITEM_REFERENCES b ON b.REFERENCE_ID = a.REFERENCE_ID
-										 AND b.IS_ACTIVE = 1
-				   JOIN WAREHOUSES c ON c.WAREHOUSE_ID = a.WAREHOUSE_ID
-				  WHERE EXISTS (SELECT 1 FROM ITEMS d
-								 WHERE d.ITEM_ID = b.ITEM_ID
-								   AND d.IS_ACTIVE = 1
-								   AND d.IS_CATALOG_VISIBLE = 1)          
+		IF EXISTS(SELECT 1 FROM INSERTED)
+			SET @actualizationType = 'I'
+			
+		INSERT INTO REXISTENCIAS (IdItemxColor, IdItem, IdBodega, Cantidad, Color, bodega, Accion)
+			 SELECT a.REFERENCE_ID, b.ITEM_ID, a.WAREHOUSE_ID, a.QUANTITY, b.REFERENCE_NAME, c.WAREHOUSE_NAME, @actualizationType			 
+			   FROM INSERTED a
+			   JOIN ITEM_REFERENCES b ON b.REFERENCE_ID = a.REFERENCE_ID
+									 AND b.IS_ACTIVE = 1
+			   JOIN WAREHOUSES c ON c.WAREHOUSE_ID = a.WAREHOUSE_ID
+			  WHERE EXISTS (SELECT 1 FROM ITEMS d
+							 WHERE d.ITEM_ID = b.ITEM_ID
+							   AND d.IS_ACTIVE = 1
+							   AND d.IS_CATALOG_VISIBLE = 1)          
 	END
 END
 GO
 
-CREATE OR ALTER TRIGGER [DBO].[TRGINSERTSTRANCITO_ACTIVITIES]
+CREATE OR ALTER TRIGGER [DBO].[TRGINSERTSTRANSITO_ACTIVITIES]
 ON  PURCHASE_ORDER_ACTIVITIES
    AFTER INSERT, UPDATE, DELETE
 AS
@@ -734,7 +724,7 @@ BEGIN
 END    
 GO    
 
-CREATE OR ALTER TRIGGER [DBO].[TRGINSERTSTRANCITO_DETAILS]
+CREATE OR ALTER TRIGGER [DBO].[TRGINSERTSTRANSITO_DETAILS]
 ON  PURCHASE_ORDER_DETAILS
    AFTER INSERT, UPDATE, DELETE
 AS  
@@ -790,7 +780,7 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER TRIGGER [DBO].[TRGINSERTSTRANCITO_ORDERS]
+CREATE OR ALTER TRIGGER [DBO].[TRGINSERTSTRANSITO_ORDERS]
 ON  PURCHASE_ORDERS
    AFTER INSERT, UPDATE, DELETE
 AS  

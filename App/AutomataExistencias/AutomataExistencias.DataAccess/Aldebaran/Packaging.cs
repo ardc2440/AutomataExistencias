@@ -17,16 +17,16 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public short? ItemId { get; set; }
 
         [Column("PESO")]
-        public decimal? Weight { get; set; }
+        public double? Weight { get; set; }
 
         [Column("ALTURA")]
-        public decimal? Height { get; set; }
+        public double? Height { get; set; }
 
         [Column("ANCHO")]
-        public decimal? Width { get; set; }
+        public double? Width { get; set; }
 
         [Column("LARGO")]
-        public decimal? Long { get; set; }
+        public double? Long { get; set; }
 
         [Column("CANTIDAD")]
         public string Quantity { get; set; }
