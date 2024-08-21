@@ -13,12 +13,14 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
         private readonly Domain.Cataprom.IPackagingService _catapromPackagingService;
+        private readonly Domain.Aldebaran.Homologacion.IPackagingHomologadosService _packagingHomologadosService;
 
-        public PackagingSynchronize(Domain.Aldebaran.IPackagingService aldebaranPackagingService, Domain.Cataprom.IPackagingService catapromPackagingService)
+        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, Domain.Cataprom.IPackagingService catapromPackagingService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranPackagingService = aldebaranPackagingService;
             _catapromPackagingService = catapromPackagingService;
+            _packagingHomologadosService = packagingHomologadosService;
         }
         public void Sync(IEnumerable<Packaging> data, int syncAttempts)
         {
@@ -35,10 +37,12 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
+                    var packagingHomologado = _packagingHomologadosService.GetById(item.PackagingId);
+
                     _catapromPackagingService.AddOrUpdate(new DataAccess.Cataprom.Packaging
                     {
-                        Id = item.PackagingId,
-                        ItemId = item.ItemId,
+                        Id = packagingHomologado.PackagingIdHomologado,
+                        ItemId = packagingHomologado.ItemIdHomologado,
                         Weight = (decimal)item.Weight,
                         Height = (decimal)item.Height,
                         Width = (decimal)item.Width,
@@ -83,7 +87,9 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
-                    _catapromPackagingService.Remove(new DataAccess.Cataprom.Packaging { Id = item.PackagingId });
+                    var packagingHomologado = _packagingHomologadosService.GetById(item.PackagingId);
+
+                    _catapromPackagingService.Remove(new DataAccess.Cataprom.Packaging { Id = packagingHomologado.PackagingIdHomologado });
                     _catapromPackagingService.SaveChanges();
                     _aldebaranPackagingService.Remove(item);
                     deleted++;

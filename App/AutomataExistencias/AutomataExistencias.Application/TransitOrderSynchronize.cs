@@ -13,12 +13,14 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
         private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
+        private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
 
-        public TransitOrderSynchronize(Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService)
+        public TransitOrderSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
             _catapromTransitOrderService = catapromTransitOrderService;
+            _itemReferencesHomologadosService = itemReferencesHomologadosService;
         }
         public void Sync(IEnumerable<TransitOrder> data, int syncAttempts)
         {
@@ -35,6 +37,8 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
+                    var itemReferencesHomologado = _itemReferencesHomologadosService.GetById((int)item.ColorItemId);
+
                     _catapromTransitOrderService.AddOrUpdate(new DataAccess.Cataprom.TransitOrder
                     {
                         Id = item.TransitOrderItemId,
@@ -42,7 +46,7 @@ namespace AutomataExistencias.Application
                         DeliveredQuantity = item.DeliveredQuantity.NullTo(),
                         Date = item.Date.NullTo(DateTime.Now),
                         Activity = item.Activity,
-                        ColorItemId = item.ColorItemId.NullTo()                        
+                        ColorItemId = itemReferencesHomologado.ReferenceIdHomologado                       
                     });
                     _catapromTransitOrderService.SaveChanges();
                     _aldebaranTransitOrderService.Remove(item);
@@ -81,7 +85,7 @@ namespace AutomataExistencias.Application
             foreach (var item in dataFirebird)
             {
                 try
-                {
+                {   
                     _catapromTransitOrderService.Remove(new DataAccess.Cataprom.TransitOrder { Id = item.TransitOrderItemId });
                     _catapromTransitOrderService.SaveChanges();
                     _aldebaranTransitOrderService.Remove(item);

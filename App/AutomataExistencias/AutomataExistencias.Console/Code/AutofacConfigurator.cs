@@ -53,6 +53,12 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.PackagingService>().As<Domain.Aldebaran.IPackagingService>();
             builder.RegisterType<Domain.Aldebaran.CleanService>().As<Domain.Aldebaran.ICleanService>();
 
+            builder.RegisterType<Domain.Aldebaran.Homologacion.ItemsHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemsHomologadosService>();
+            builder.RegisterType<Domain.Aldebaran.Homologacion.ItemReferencesHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService>();
+            builder.RegisterType<Domain.Aldebaran.Homologacion.CurrenciesHomologadosService>().As<Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService>();
+            builder.RegisterType<Domain.Aldebaran.Homologacion.MeasureUnitsHomologadosService>().As<Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService>();
+            builder.RegisterType<Domain.Aldebaran.Homologacion.PackagingHomologadosService>().As<Domain.Aldebaran.Homologacion.IPackagingHomologadosService>();
+
             /*Sync*/
             builder.RegisterType<ItemByColorSynchronize>().As<IItemByColorSynchronize>();
             builder.RegisterType<ItemSynchronize>().As<IItemSynchronize>();

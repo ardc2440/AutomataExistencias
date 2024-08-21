@@ -73,6 +73,11 @@ namespace AutomataExistencias.DataAccess.Core
             return _entitySet.Where(where);
         }
 
+        public T GetByWhere(Expression<Func<T, bool>> where)
+        {
+            return _entitySet.Where(where).FirstOrDefault();
+        }
+
         public IEnumerable<T> Get(params Expression<Func<T, object>>[] includes)
         {
             var query = _entitySet.AsNoTracking();

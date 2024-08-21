@@ -1,0 +1,27 @@
+﻿using AutomataExistencias.DataAccess.Aldebaran.Homologacion;
+using AutomataExistencias.DataAccess.Core.Contract;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace AutomataExistencias.Domain.Aldebaran.Homologacion
+{
+    public class PackagingHomologadosService: IPackagingHomologadosService
+    {
+        #region Properties
+        private readonly IUnitOfWorkAldebaran _unitOfWork;
+        #endregion
+
+        public PackagingHomologadosService(IUnitOfWorkAldebaran unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
+        }
+
+        public PackagingHomologado GetById(short id) 
+        {
+            return _unitOfWork.Repository<PackagingHomologado>().GetByWhere(w => w.PackagingId == id);
+        }
+    }
+}

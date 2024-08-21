@@ -13,11 +13,18 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IItemService _aldebaranItemService;
         private readonly Domain.Cataprom.IItemService _catapromItemService;
-        public ItemSynchronize(Domain.Aldebaran.IItemService aldebaranItemService, Domain.Cataprom.IItemService catapromItemService)
+        private readonly Domain.Aldebaran.Homologacion.IItemsHomologadosService _itemsHomologadosService;
+        private readonly Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService _currenciesHomologadosService;
+        private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService;
+
+        public ItemSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.Homologacion.IItemsHomologadosService itemsHomologadosService, Domain.Cataprom.IItemService catapromItemService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemService = aldebaranItemService;
             _catapromItemService = catapromItemService;
+            _itemsHomologadosService = itemsHomologadosService;
+            _currenciesHomologadosService = currenciesHomologadosService;
+            _measureUnitsHomologadosService = measureUnitsHomologadosService;
         }
         public void Sync(IEnumerable<Item> data, int syncAttempts)
         {
@@ -34,17 +41,22 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
+                    var itemHomologado = _itemsHomologadosService.GetById(item.ItemId);
+                    var currencyHomologado = _currenciesHomologadosService.GetById((short)item.MoneyId);
+                    var fobMeasureUnitHomologado = _measureUnitsHomologadosService.GetById((short)item.FobUnitId);
+                    var cifMeasureUnitHomologado = _measureUnitsHomologadosService.GetById((short)item.CifUnitId);
+
                     _catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
                     {
-                        Id = item.ItemId,
-                        LineId = item.LineId.NullTo(),
+                        Id = itemHomologado.ItemIdHomologado,
+                        LineId = itemHomologado.LineIdHomologada,
                         Reference = item.Reference,
                         Name = item.Name,
                         ProviderReference = item.ProviderReference,
                         ProviderItemName = item.ProviderItemName,
                         ItemType = item.ItemType,
-                        FobCost = (decimal)item.FobCost.NullTo(),
-                        MoneyId = item.MoneyId.NullTo(),
+                        FobCost = (decimal)item.FobCost.NullTo(),                        
+                        MoneyId = currencyHomologado.CurrencyIdHomologado,
                         PartType = item.PartType,
                         Determinant = item.Determinant,
                         Observations = item.Observations,
@@ -52,8 +64,8 @@ namespace AutomataExistencias.Application
                         CifCost = item.CifCost,
                         Volume = (decimal)item.Volume,
                         Weight = (decimal)item.Weight,
-                        FobUnitId = item.FobUnitId,
-                        CifUnitId = item.CifUnitId,
+                        FobUnitId = fobMeasureUnitHomologado.MeasureUnitIdHomologado,
+                        CifUnitId = cifMeasureUnitHomologado.MeasureUnitIdHomologado,
                         NationalProduct = item.NationalProduct,
                         Active = item.Active,
                         VisibleCatalog = item.VisibleCatalog,
@@ -96,7 +108,9 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
-                    _catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = item.ItemId });
+                    var itemHomologado = _itemsHomologadosService.GetById(item.ItemId);
+
+                    _catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = itemHomologado.ItemIdHomologado });
                     _catapromItemService.SaveChanges();
                     _aldebaranItemService.Remove(item);
                     deleted++;

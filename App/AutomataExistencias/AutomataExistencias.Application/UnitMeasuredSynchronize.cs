@@ -13,12 +13,14 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
         private readonly Domain.Cataprom.IUnitMeasuredService _catapromUnitMeasuredService;
+        private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService; 
 
-        public UnitMeasuredSynchronize(Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService)
+        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
             _catapromUnitMeasuredService = catapromUnitMeasuredService;
+            _measureUnitsHomologadosService = measureUnitsHomologadosService;
         }
         public void Sync(IEnumerable<UnitMeasured> data, int syncAttempts)
         {
@@ -35,9 +37,11 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
+                    var measureUnitHomolgado = _measureUnitsHomologadosService.GetById(item.UnitMeasuredId);
+
                     _catapromUnitMeasuredService.AddOrUpdate(new DataAccess.Cataprom.UnitMeasured
                     {
-                        Id = item.UnitMeasuredId,
+                        Id = measureUnitHomolgado.MeasureUnitIdHomologado,
                         Name = item.Name,
                         Active = "A"
                     });
@@ -80,7 +84,9 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
-                    _catapromUnitMeasuredService.Remove(new DataAccess.Cataprom.UnitMeasured { Id = item.UnitMeasuredId });
+                    var measureUnitHomolgado = _measureUnitsHomologadosService.GetById(item.UnitMeasuredId);
+
+                    _catapromUnitMeasuredService.Remove(new DataAccess.Cataprom.UnitMeasured { Id = measureUnitHomolgado.MeasureUnitIdHomologado });
                     _catapromUnitMeasuredService.SaveChanges();
                     _aldebaranUnitMeasuredService.Remove(item);
                     deleted++;

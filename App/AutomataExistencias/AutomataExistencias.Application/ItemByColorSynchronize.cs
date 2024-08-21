@@ -13,11 +13,14 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
         private readonly Domain.Cataprom.IItemByColorService _catapromItemByColorService;
-        public ItemByColorSynchronize(Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Cataprom.IItemByColorService catapromItemByColorService)
+        private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
+
+        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Cataprom.IItemByColorService catapromItemByColorService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemByColorService = aldebaranItemByColorService;
             _catapromItemByColorService = catapromItemByColorService;
+            _itemReferencesHomologadosService = itemReferencesHomologadosService;
         }
         public void Sync(IEnumerable<ItemByColor> data, int syncAttempts)
         {
@@ -34,10 +37,12 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
+                    var itemReferenceHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
+
                     _catapromItemByColorService.AddOrUpdate(new DataAccess.Cataprom.ItemByColor
                     {
-                        Id = item.ColorItemId,
-                        ItemId = item.ItemId.NullTo(),
+                        Id = itemReferenceHomologado.ReferenceIdHomologado,
+                        ItemId = itemReferenceHomologado.ItemIdHomologado,
                         ItemByColorReference = item.ItemByColorReference,
                         ItemByColorInternalReference = item.ItemByColorInternalReference,
                         ColorName = item.ColorName,
@@ -92,7 +97,9 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
-                    _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = item.ColorItemId });
+                    var itemReferenceHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
+
+                    _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = itemReferenceHomologado.ReferenceIdHomologado });
                     _catapromItemByColorService.SaveChanges();
                     _aldebaranItemByColorService.Remove(item);
                     deleted++;

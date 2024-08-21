@@ -54,6 +54,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Aldebaran\Homologacion\PackagingHomologado.cs" />
+    <Compile Include="Aldebaran\Homologacion\CurrencyHomologado.cs" />
+    <Compile Include="Aldebaran\Homologacion\MeasureUnitHomologado.cs" />
+    <Compile Include="Aldebaran\Homologacion\ItemReferenceHomologado.cs" />
+    <Compile Include="Aldebaran\Homologacion\ItemHomologado.cs" />
     <Compile Include="Aldebaran\Item.cs" />
     <Compile Include="Aldebaran\ItemByColor.cs" />
     <Compile Include="Aldebaran\Line.cs" />

@@ -13,11 +13,14 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
         private readonly Domain.Cataprom.IMoneyService _catapromMoneyService;
-        public MoneySynchronize(Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Cataprom.IMoneyService catapromMoneyService)
+        private readonly Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService _currenciesHomologadosService;
+
+        public MoneySynchronize(Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Cataprom.IMoneyService catapromMoneyService)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranMoneyService = aldebaranMoneyService;
             _catapromMoneyService = catapromMoneyService;
+            _currenciesHomologadosService = currenciesHomologadosService;
         }
         public void Sync(IEnumerable<Money> data, int syncAttempts)
         {
@@ -34,9 +37,11 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
+                    var currencyHomologado = _currenciesHomologadosService.GetById(item.MoneyId);
+
                     _catapromMoneyService.AddOrUpdate(new DataAccess.Cataprom.Money
                     {
-                        Id = item.MoneyId,
+                        Id = currencyHomologado.CurrencyIdHomologado,
                         Name = item.Name,
                         Active = "A"
                     });
@@ -78,7 +83,10 @@ namespace AutomataExistencias.Application
             {
                 try
                 {
-                    _catapromMoneyService.Remove(new DataAccess.Cataprom.Money { Id = item.MoneyId });
+                    var currencyHomologado = _currenciesHomologadosService.GetById(item.MoneyId);
+
+                    if (currencyHomologado != null)
+                    _catapromMoneyService.Remove(new DataAccess.Cataprom.Money { Id = currencyHomologado.CurrencyIdHomologado });
                     _catapromMoneyService.SaveChanges();
                     _aldebaranMoneyService.Remove(item);
                     deleted++;

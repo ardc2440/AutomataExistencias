@@ -2,6 +2,7 @@
 using System.Data.SqlClient;
 using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Aldebaran.Homologacion;
 
 namespace AutomataExistencias.DataAccess.Core
 {
@@ -16,6 +17,12 @@ namespace AutomataExistencias.DataAccess.Core
         public DbSet<UnitMeasured> UnitMeasured { get; set; }
         public DbSet<TransitOrder> TransitOrder { get; set; }
         public DbSet<Packaging> Packaging { get; set; }
+
+        public DbSet<ItemHomologado> ItemHomologados { get; set; }
+        public DbSet<ItemReferenceHomologado> ItemReferenceHomologados { get; set; }
+        public DbSet<CurrencyHomologado> CurrencyHomologados { get; set; }
+        public DbSet<MeasureUnitHomologado> MeasureUnitHomologados { get; set; }
+        public DbSet<PackagingHomologado> PackagingHomologados { get; set; }
 
         #endregion
 

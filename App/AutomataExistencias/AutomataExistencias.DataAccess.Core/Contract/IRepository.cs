@@ -16,6 +16,7 @@ namespace AutomataExistencias.DataAccess.Core.Contract
         IEnumerable<T> GetWithoutNoTracking(Expression<Func<T, bool>> where);
         IEnumerable<T> Get(params Expression<Func<T, object>>[] includes);
         IEnumerable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object>>[] includes);
+        T GetByWhere(Expression<Func<T, bool>> where);
         void SaveChanges();
     }
 }

@@ -65,6 +65,16 @@
     <Compile Include="CleanService.cs">
       <DependentUpon>ICleanService.cs</DependentUpon>
     </Compile>
+    <Compile Include="Homologacion\IMeasureUnitsHomologadosService.cs" />
+    <Compile Include="Homologacion\ICurrenciesHomologadosService.cs" />
+    <Compile Include="Homologacion\IPackagingHomologadosService.cs" />
+    <Compile Include="Homologacion\IItemReferencesHomologadosService.cs" />
+    <Compile Include="Homologacion\IItemsHomologadosService.cs" />
+    <Compile Include="Homologacion\ItemReferencesHomologadosService.cs" />
+    <Compile Include="Homologacion\CurrenciesHomologadosService.cs" />
+    <Compile Include="Homologacion\MeasureUnitsHomologadosService.cs" />
+    <Compile Include="Homologacion\PackagingHomologadosService.cs" />
+    <Compile Include="Homologacion\ItemsHomologadosService.cs" />
     <Compile Include="ICleanService.cs" />
     <Compile Include="IItemByColorService.cs" />
     <Compile Include="IItemService.cs" />
