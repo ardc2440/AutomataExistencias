@@ -14,7 +14,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public short PackagingId { get; set; }
 
         [Column("IDITEM")]
-        public short? ItemId { get; set; }
+        public int? ItemId { get; set; }
 
         [Column("PESO")]
         public double? Weight { get; set; }
