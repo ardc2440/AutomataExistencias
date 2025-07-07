@@ -20,7 +20,7 @@ namespace AutomataExistencias.DataAccess.Aldebaran
         public short StorageCellarId { get; set; }
 
         [Column("COLOR")]
-        public string Colores { get; set; }
+        public string Color { get; set; }
 
         [Column("CANTIDAD")]
         public int Quantity { get; set; }
