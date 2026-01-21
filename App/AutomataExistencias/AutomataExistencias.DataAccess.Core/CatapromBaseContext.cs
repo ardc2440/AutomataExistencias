@@ -26,7 +26,12 @@ namespace AutomataExistencias.DataAccess.Core
 
         }
         public CatapromBaseContext(ICatapromApplicationEnvironment applicationEnvironment)
-            : base(new SqlConnection(applicationEnvironment.GetConnectionString()), true)
+            : this(applicationEnvironment.GetConnectionString())
+        {
+        }
+
+        public CatapromBaseContext(string connectionString)
+            : base(new SqlConnection(connectionString), true)
         {
             Database.SetInitializer<CatapromBaseContext>(new CatapromBaseContextInitializer());
         }

@@ -82,6 +82,7 @@
     <Compile Include="ILineService.cs" />
     <Compile Include="IMoneyService.cs" />
     <Compile Include="InventoryAutomationConnectionService.cs" />
+    <Compile Include="InventoryAutomationConnectionStringBuilder.cs" />
     <Compile Include="IPackagingService.cs" />
     <Compile Include="IStockService.cs" />
     <Compile Include="ItemByColorService.cs">

@@ -7,6 +7,7 @@ using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
 using NLog;
 using Topshelf;
+using System.Linq;
 
 namespace AutomataExistencias.Console
 {
@@ -19,6 +20,16 @@ namespace AutomataExistencias.Console
             {
                 logger.Info($"Trying to start Service: [{ConfigurationManager.AppSettings["Service.ServiceName"]}]");
                 var container = AutofacConfigurator.GetContainer();
+
+                // Validate that there is at least one active destination connection before starting the service
+                var inventoryConnectionService = container.Resolve<Domain.Aldebaran.IInventoryAutomationConnectionService>();
+                var activeConnections = inventoryConnectionService.GetActive();
+                if (activeConnections == null || !activeConnections.Any())
+                {
+                    logger.Error("No active Inventory Automation connections found. Service will not start.");
+                    return;
+                }
+
                 HostFactory.Run(x =>
                 {
                     x.Service<Service>(s =>
