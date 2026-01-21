@@ -76,10 +76,12 @@
     <Compile Include="Homologacion\PackagingHomologadosService.cs" />
     <Compile Include="Homologacion\ItemsHomologadosService.cs" />
     <Compile Include="ICleanService.cs" />
+    <Compile Include="IInventoryAutomationConnectionService.cs" />
     <Compile Include="IItemByColorService.cs" />
     <Compile Include="IItemService.cs" />
     <Compile Include="ILineService.cs" />
     <Compile Include="IMoneyService.cs" />
+    <Compile Include="InventoryAutomationConnectionService.cs" />
     <Compile Include="IPackagingService.cs" />
     <Compile Include="IStockService.cs" />
     <Compile Include="ItemByColorService.cs">

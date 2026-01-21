@@ -17,6 +17,7 @@ namespace AutomataExistencias.DataAccess.Core
         public DbSet<UnitMeasured> UnitMeasured { get; set; }
         public DbSet<TransitOrder> TransitOrder { get; set; }
         public DbSet<Packaging> Packaging { get; set; }
+        public DbSet<InventoryAutomationConnection> InventoryAutomationConnections { get; set; }
 
         public DbSet<ItemHomologado> ItemHomologados { get; set; }
         public DbSet<ItemReferenceHomologado> ItemReferenceHomologados { get; set; }
