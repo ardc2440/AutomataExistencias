@@ -67,6 +67,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<MoneySynchronize>().As<IMoneySynchronize>();
             builder.RegisterType<PackagingSynchronize>().As<IPackagingSynchronize>();
             builder.RegisterType<StockSynchronize>().As<IStockSynchronize>();
+            builder.RegisterType<CatapromDestinationRunner>().As<ICatapromDestinationRunner>();
             builder.RegisterType<UpdateProcessSynchronize>().As<IUpdateProcessSynchronize>();
             builder.RegisterType<CleanerProcess>().As<ICleanerProcess>();
             builder.RegisterType<TransitOrderSynchronize>().As<ITransitOrderSynchronize>();

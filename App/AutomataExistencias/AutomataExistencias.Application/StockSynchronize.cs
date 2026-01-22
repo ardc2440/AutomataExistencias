@@ -13,19 +13,19 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         /*Aldebaran*/
         private readonly Domain.Aldebaran.IStockService _aldebaranStockService;
-        private readonly Domain.Cataprom.IStockService _catapromStockService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
 
-        public StockSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IStockService aldebaranStockService, Domain.Cataprom.IStockService catapromStockService)
+        public StockSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IStockService aldebaranStockService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranStockService = aldebaranStockService;
-            _catapromStockService = catapromStockService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _itemReferencesHomologadosService = itemReferencesHomologadosService;
         }
         public void Sync(IEnumerable<Stock> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(s => s.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [StockSync]");
@@ -36,31 +36,48 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemReferencesHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
+
+                        var catapromStockService = new Domain.Cataprom.StockService(unitOfWorkCataprom);
+                        catapromStockService.AddOrUpdate(new DataAccess.Cataprom.Stock
+                        {
+                            ColorItemId = itemReferencesHomologado.ReferenceIdHomologado,
+                            ItemId = itemReferencesHomologado.ItemIdHomologado,
+                            Color = item.Color,
+                            Quantity = item.Quantity,
+                            StorageCellar = item.StorageCellar
+                        });
+                        catapromStockService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemReferencesHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
-
-                    _catapromStockService.AddOrUpdate(new DataAccess.Cataprom.Stock
+                    if (allDestinationsOk)
                     {
-                        ColorItemId = itemReferencesHomologado.ReferenceIdHomologado,
-                        ItemId = itemReferencesHomologado.ItemIdHomologado,
-                        Color = item.Color,
-                        Quantity = item.Quantity,
-                        StorageCellar = item.StorageCellar
-                    });
-                    _catapromStockService.SaveChanges();
-                    _aldebaranStockService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranStockService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranStockService.Update(item);
+                    {
+                        _aldebaranStockService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -73,7 +90,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<Stock> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(s => s.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [StockReverseSync]");
@@ -84,28 +101,45 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemReferencesHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
+
+                        var catapromStockService = new Domain.Cataprom.StockService(unitOfWorkCataprom);
+                        catapromStockService.Remove(new DataAccess.Cataprom.Stock
+                        {
+                            ColorItemId = itemReferencesHomologado.ReferenceIdHomologado,
+                            StorageCellar = item.StorageCellar
+                        });
+                        catapromStockService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemReferencesHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
-
-                    _catapromStockService.Remove(new DataAccess.Cataprom.Stock
+                    if (allDestinationsOk)
                     {
-                        ColorItemId = itemReferencesHomologado.ReferenceIdHomologado,
-                        StorageCellar = item.StorageCellar
-                    });
-                    _catapromStockService.SaveChanges();
-                    _aldebaranStockService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranStockService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranStockService.Update(item);
+                    {
+                        _aldebaranStockService.Update(item);
+                    }
                 }
                 finally
                 {

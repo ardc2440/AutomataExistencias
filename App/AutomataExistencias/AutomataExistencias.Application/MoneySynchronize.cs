@@ -12,19 +12,19 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
-        private readonly Domain.Cataprom.IMoneyService _catapromMoneyService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService _currenciesHomologadosService;
 
-        public MoneySynchronize(Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, Domain.Cataprom.IMoneyService catapromMoneyService)
+        public MoneySynchronize(Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranMoneyService = aldebaranMoneyService;
-            _catapromMoneyService = catapromMoneyService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _currenciesHomologadosService = currenciesHomologadosService;
         }
         public void Sync(IEnumerable<Money> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(m => m.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [MoneySync]");
@@ -35,29 +35,46 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var currencyHomologado = _currenciesHomologadosService.GetById(item.MoneyId);
+
+                        var catapromMoneyService = new Domain.Cataprom.MoneyService(unitOfWorkCataprom);
+                        catapromMoneyService.AddOrUpdate(new DataAccess.Cataprom.Money
+                        {
+                            Id = currencyHomologado.CurrencyIdHomologado,
+                            Name = item.Name,
+                            Active = "A"
+                        });
+                        catapromMoneyService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update a Money from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Money from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var currencyHomologado = _currenciesHomologadosService.GetById(item.MoneyId);
-
-                    _catapromMoneyService.AddOrUpdate(new DataAccess.Cataprom.Money
+                    if (allDestinationsOk)
                     {
-                        Id = currencyHomologado.CurrencyIdHomologado,
-                        Name = item.Name,
-                        Active = "A"
-                    });
-                    _catapromMoneyService.SaveChanges();
-                    _aldebaranMoneyService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Money from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranMoneyService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Money from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranMoneyService.Update(item);
+                    {
+                        _aldebaranMoneyService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -70,7 +87,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<Money> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(m => m.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [MoneyReverseSync]");
@@ -81,25 +98,44 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var currencyHomologado = _currenciesHomologadosService.GetById(item.MoneyId);
+
+                        if (currencyHomologado != null)
+                        {
+                            var catapromMoneyService = new Domain.Cataprom.MoneyService(unitOfWorkCataprom);
+                            catapromMoneyService.Remove(new DataAccess.Cataprom.Money { Id = currencyHomologado.CurrencyIdHomologado });
+                            catapromMoneyService.SaveChanges();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete a Money from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Money from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var currencyHomologado = _currenciesHomologadosService.GetById(item.MoneyId);
-
-                    if (currencyHomologado != null)
-                    _catapromMoneyService.Remove(new DataAccess.Cataprom.Money { Id = currencyHomologado.CurrencyIdHomologado });
-                    _catapromMoneyService.SaveChanges();
-                    _aldebaranMoneyService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Money from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranMoneyService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Money from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranMoneyService.Update(item);
+                    {
+                        _aldebaranMoneyService.Update(item);
+                    }
                 }
                 finally
                 {

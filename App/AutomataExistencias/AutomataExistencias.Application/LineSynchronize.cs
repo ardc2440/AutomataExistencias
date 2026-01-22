@@ -12,16 +12,16 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.ILineService _aldebaranLineService;
-        private readonly Domain.Cataprom.ILineService _catapromLineService;
-        public LineSynchronize(Domain.Aldebaran.ILineService aldebaranLineService, Domain.Cataprom.ILineService catapromLineService)
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
+        public LineSynchronize(Domain.Aldebaran.ILineService aldebaranLineService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranLineService = aldebaranLineService;
-            _catapromLineService = catapromLineService;
+            _catapromDestinationRunner = catapromDestinationRunner;
         }
         public void Sync(IEnumerable<Line> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(l => l.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [LinesSync]");
@@ -32,29 +32,46 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var catapromLineService = new Domain.Cataprom.LineService(unitOfWorkCataprom);
+                        catapromLineService.AddOrUpdate(new DataAccess.Cataprom.Line
+                        {
+                            Id = item.LineId,
+                            Code = item.Code,
+                            Name = item.Name,
+                            Daemon = item.Daemon,
+                            Active = item.Active
+                        });
+                        catapromLineService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update a Line from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Line from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    _catapromLineService.AddOrUpdate(new DataAccess.Cataprom.Line
+                    if (allDestinationsOk)
                     {
-                        Id = item.LineId,
-                        Code = item.Code,
-                        Name = item.Name,
-                        Daemon = item.Daemon,
-                        Active = item.Active
-                    });
-                    _catapromLineService.SaveChanges();
-                    _aldebaranLineService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Line from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranLineService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Line from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranLineService.Update(item);
+                    {
+                        _aldebaranLineService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -67,7 +84,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<Line> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(l => l.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [LinesReverseSync]");
@@ -78,22 +95,39 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var catapromLineService = new Domain.Cataprom.LineService(unitOfWorkCataprom);
+                        catapromLineService.Remove(new DataAccess.Cataprom.Line { Id = item.LineId });
+                        catapromLineService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete a Line from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Line from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    _catapromLineService.Remove(new DataAccess.Cataprom.Line { Id = item.LineId });
-                    _catapromLineService.SaveChanges();
-                    _aldebaranLineService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Line from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranLineService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Line from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranLineService.Update(item);
+                    {
+                        _aldebaranLineService.Update(item);
+                    }
                 }
                 finally
                 {

@@ -12,19 +12,19 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
-        private readonly Domain.Cataprom.IItemByColorService _catapromItemByColorService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
 
-        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, Domain.Cataprom.IItemByColorService catapromItemByColorService)
+        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemByColorService = aldebaranItemByColorService;
-            _catapromItemByColorService = catapromItemByColorService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _itemReferencesHomologadosService = itemReferencesHomologadosService;
         }
         public void Sync(IEnumerable<ItemByColor> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(i => i.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [ItemsByColorSync]");
@@ -35,43 +35,60 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemReferenceHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
+
+                        var catapromItemByColorService = new Domain.Cataprom.ItemByColorService(unitOfWorkCataprom);
+                        catapromItemByColorService.AddOrUpdate(new DataAccess.Cataprom.ItemByColor
+                        {
+                            Id = itemReferenceHomologado.ReferenceIdHomologado,
+                            ItemId = itemReferenceHomologado.ItemIdHomologado,
+                            ItemByColorReference = item.ItemByColorReference,
+                            ItemByColorInternalReference = item.ItemByColorInternalReference,
+                            ColorName = item.ColorName,
+                            ProviderNomItemByColor = item.ProviderNomItemByColor,
+                            Observations = item.Observations,
+                            Color = item.Color,
+                            QuantityOrder = item.QuantityOrder.NullTo(),
+                            Quantity = item.Quantity.NullTo(),
+                            QuantityReserved = item.QuantityReserved.NullTo(),
+                            QuantityOrderPan = item.QuantityOrderPan.NullTo(),
+                            QuantityPan = item.QuantityPan.NullTo(),
+                            QuantityReservedPan = item.QuantityReservedPan.NullTo(),
+                            Active = item.Active,
+                            SoldOut = item.SoldOut,
+                            QuantityProcess = item.QuantityProcess.NullTo(),
+                        });
+                        catapromItemByColorService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update an ItemByColor from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an ItemByColor from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemReferenceHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
-
-                    _catapromItemByColorService.AddOrUpdate(new DataAccess.Cataprom.ItemByColor
+                    if (allDestinationsOk)
                     {
-                        Id = itemReferenceHomologado.ReferenceIdHomologado,
-                        ItemId = itemReferenceHomologado.ItemIdHomologado,
-                        ItemByColorReference = item.ItemByColorReference,
-                        ItemByColorInternalReference = item.ItemByColorInternalReference,
-                        ColorName = item.ColorName,
-                        ProviderNomItemByColor = item.ProviderNomItemByColor,
-                        Observations = item.Observations,
-                        Color = item.Color,
-                        QuantityOrder = item.QuantityOrder.NullTo(),
-                        Quantity = item.Quantity.NullTo(),
-                        QuantityReserved = item.QuantityReserved.NullTo(),
-                        QuantityOrderPan = item.QuantityOrderPan.NullTo(),
-                        QuantityPan = item.QuantityPan.NullTo(),
-                        QuantityReservedPan = item.QuantityReservedPan.NullTo(),
-                        Active = item.Active,
-                        SoldOut = item.SoldOut,
-                        QuantityProcess = item.QuantityProcess.NullTo(),
-                    });
-                    _catapromItemByColorService.SaveChanges();
-                    _aldebaranItemByColorService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update an ItemByColor from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranItemByColorService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an ItemByColor from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranItemByColorService.Update(item);
+                    {
+                        _aldebaranItemByColorService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -84,7 +101,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<ItemByColor> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(i => i.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [ItemsByColorReverseSync]");
@@ -95,24 +112,41 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemReferenceHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
+
+                        var catapromItemByColorService = new Domain.Cataprom.ItemByColorService(unitOfWorkCataprom);
+                        catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = itemReferenceHomologado.ReferenceIdHomologado });
+                        catapromItemByColorService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete an ItemByColor from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an ItemByColor from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemReferenceHomologado = _itemReferencesHomologadosService.GetById(item.ColorItemId);
-
-                    _catapromItemByColorService.Remove(new DataAccess.Cataprom.ItemByColor { Id = itemReferenceHomologado.ReferenceIdHomologado });
-                    _catapromItemByColorService.SaveChanges();
-                    _aldebaranItemByColorService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete an ItemByColor from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranItemByColorService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an ItemByColor from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranItemByColorService.Update(item);
+                    {
+                        _aldebaranItemByColorService.Update(item);
+                    }
                 }
                 finally
                 {

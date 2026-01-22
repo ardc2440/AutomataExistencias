@@ -12,19 +12,19 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
-        private readonly Domain.Cataprom.IPackagingService _catapromPackagingService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IPackagingHomologadosService _packagingHomologadosService;
 
-        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, Domain.Cataprom.IPackagingService catapromPackagingService)
+        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranPackagingService = aldebaranPackagingService;
-            _catapromPackagingService = catapromPackagingService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _packagingHomologadosService = packagingHomologadosService;
         }
         public void Sync(IEnumerable<Packaging> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(p => p.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [PackagingSync]");
@@ -35,33 +35,50 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var packagingHomologado = _packagingHomologadosService.GetById(item.PackagingId);
+
+                        var catapromPackagingService = new Domain.Cataprom.PackagingService(unitOfWorkCataprom);
+                        catapromPackagingService.AddOrUpdate(new DataAccess.Cataprom.Packaging
+                        {
+                            Id = packagingHomologado.PackagingIdHomologado,
+                            ItemId = packagingHomologado.ItemIdHomologado,
+                            Weight = (decimal)item.Weight,
+                            Height = (decimal)item.Height,
+                            Width = (decimal)item.Width,
+                            Long = (decimal)item.Long,
+                            Quantity = item.Quantity
+                        });
+                        catapromPackagingService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var packagingHomologado = _packagingHomologadosService.GetById(item.PackagingId);
-
-                    _catapromPackagingService.AddOrUpdate(new DataAccess.Cataprom.Packaging
+                    if (allDestinationsOk)
                     {
-                        Id = packagingHomologado.PackagingIdHomologado,
-                        ItemId = packagingHomologado.ItemIdHomologado,
-                        Weight = (decimal)item.Weight,
-                        Height = (decimal)item.Height,
-                        Width = (decimal)item.Width,
-                        Long = (decimal)item.Long,
-                        Quantity = item.Quantity
-                    });
-                    _catapromPackagingService.SaveChanges();
-                    _aldebaranPackagingService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranPackagingService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranPackagingService.Update(item);
+                    {
+                        _aldebaranPackagingService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -74,7 +91,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<Packaging> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(p => p.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [PackagingReverseSync]");
@@ -85,24 +102,41 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var packagingHomologado = _packagingHomologadosService.GetById(item.PackagingId);
+
+                        var catapromPackagingService = new Domain.Cataprom.PackagingService(unitOfWorkCataprom);
+                        catapromPackagingService.Remove(new DataAccess.Cataprom.Packaging { Id = packagingHomologado.PackagingIdHomologado });
+                        catapromPackagingService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var packagingHomologado = _packagingHomologadosService.GetById(item.PackagingId);
-
-                    _catapromPackagingService.Remove(new DataAccess.Cataprom.Packaging { Id = packagingHomologado.PackagingIdHomologado });
-                    _catapromPackagingService.SaveChanges();
-                    _aldebaranPackagingService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranPackagingService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranPackagingService.Update(item);
+                    {
+                        _aldebaranPackagingService.Update(item);
+                    }
                 }
                 finally
                 {

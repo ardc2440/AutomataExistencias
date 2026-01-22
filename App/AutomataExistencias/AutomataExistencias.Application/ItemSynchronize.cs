@@ -12,23 +12,23 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IItemService _aldebaranItemService;
-        private readonly Domain.Cataprom.IItemService _catapromItemService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemsHomologadosService _itemsHomologadosService;
         private readonly Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService _currenciesHomologadosService;
         private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService;
 
-        public ItemSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.Homologacion.IItemsHomologadosService itemsHomologadosService, Domain.Cataprom.IItemService catapromItemService)
+        public ItemSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.Homologacion.IItemsHomologadosService itemsHomologadosService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemService = aldebaranItemService;
-            _catapromItemService = catapromItemService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _itemsHomologadosService = itemsHomologadosService;
             _currenciesHomologadosService = currenciesHomologadosService;
             _measureUnitsHomologadosService = measureUnitsHomologadosService;
         }
         public void Sync(IEnumerable<Item> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(i => i.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [ItemsSync]");
@@ -39,50 +39,67 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemHomologado = _itemsHomologadosService.GetById(item.ItemId);
+                        var currencyHomologado = _currenciesHomologadosService.GetById((short)item.MoneyId);
+                        var fobMeasureUnitHomologado = _measureUnitsHomologadosService.GetById((short)item.FobUnitId);
+                        var cifMeasureUnitHomologado = _measureUnitsHomologadosService.GetById((short)item.CifUnitId);
+
+                        var catapromItemService = new Domain.Cataprom.ItemService(unitOfWorkCataprom);
+                        catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
+                        {
+                            Id = itemHomologado.ItemIdHomologado,
+                            LineId = itemHomologado.LineIdHomologada,
+                            Reference = item.Reference,
+                            Name = item.Name,
+                            ProviderReference = item.ProviderReference,
+                            ProviderItemName = item.ProviderItemName,
+                            ItemType = item.ItemType,
+                            FobCost = (decimal)item.FobCost.NullTo(),
+                            MoneyId = currencyHomologado.CurrencyIdHomologado,
+                            PartType = item.PartType,
+                            Determinant = item.Determinant,
+                            Observations = item.Observations,
+                            StockExt = item.StockExt,
+                            CifCost = item.CifCost,
+                            Volume = (decimal)item.Volume,
+                            Weight = (decimal)item.Weight,
+                            FobUnitId = fobMeasureUnitHomologado.MeasureUnitIdHomologado,
+                            CifUnitId = cifMeasureUnitHomologado.MeasureUnitIdHomologado,
+                            NationalProduct = item.NationalProduct,
+                            Active = item.Active,
+                            VisibleCatalog = item.VisibleCatalog,
+                        });
+                        catapromItemService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemHomologado = _itemsHomologadosService.GetById(item.ItemId);
-                    var currencyHomologado = _currenciesHomologadosService.GetById((short)item.MoneyId);
-                    var fobMeasureUnitHomologado = _measureUnitsHomologadosService.GetById((short)item.FobUnitId);
-                    var cifMeasureUnitHomologado = _measureUnitsHomologadosService.GetById((short)item.CifUnitId);
-
-                    _catapromItemService.AddOrUpdate(new DataAccess.Cataprom.Item
+                    if (allDestinationsOk)
                     {
-                        Id = itemHomologado.ItemIdHomologado,
-                        LineId = itemHomologado.LineIdHomologada,
-                        Reference = item.Reference,
-                        Name = item.Name,
-                        ProviderReference = item.ProviderReference,
-                        ProviderItemName = item.ProviderItemName,
-                        ItemType = item.ItemType,
-                        FobCost = (decimal)item.FobCost.NullTo(),                        
-                        MoneyId = currencyHomologado.CurrencyIdHomologado,
-                        PartType = item.PartType,
-                        Determinant = item.Determinant,
-                        Observations = item.Observations,
-                        StockExt = item.StockExt,
-                        CifCost = item.CifCost,
-                        Volume = (decimal)item.Volume,
-                        Weight = (decimal)item.Weight,
-                        FobUnitId = fobMeasureUnitHomologado.MeasureUnitIdHomologado,
-                        CifUnitId = cifMeasureUnitHomologado.MeasureUnitIdHomologado,
-                        NationalProduct = item.NationalProduct,
-                        Active = item.Active,
-                        VisibleCatalog = item.VisibleCatalog,
-                    });
-                    _catapromItemService.SaveChanges();
-                    _aldebaranItemService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranItemService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranItemService.Update(item);
+                    {
+                        _aldebaranItemService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -95,7 +112,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<Item> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(i => i.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [ItemsReverseSync]");
@@ -106,24 +123,41 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemHomologado = _itemsHomologadosService.GetById(item.ItemId);
+
+                        var catapromItemService = new Domain.Cataprom.ItemService(unitOfWorkCataprom);
+                        catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = itemHomologado.ItemIdHomologado });
+                        catapromItemService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemHomologado = _itemsHomologadosService.GetById(item.ItemId);
-
-                    _catapromItemService.Remove(new DataAccess.Cataprom.Item { Id = itemHomologado.ItemIdHomologado });
-                    _catapromItemService.SaveChanges();
-                    _aldebaranItemService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranItemService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranItemService.Update(item);
+                    {
+                        _aldebaranItemService.Update(item);
+                    }
                 }
                 finally
                 {

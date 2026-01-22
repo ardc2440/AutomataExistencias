@@ -12,19 +12,19 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
-        private readonly Domain.Cataprom.ITransitOrderService _catapromTransitOrderService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
 
-        public TransitOrderSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, Domain.Cataprom.ITransitOrderService catapromTransitOrderService)
+        public TransitOrderSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
-            _catapromTransitOrderService = catapromTransitOrderService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _itemReferencesHomologadosService = itemReferencesHomologadosService;
         }
         public void Sync(IEnumerable<TransitOrder> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(t => t.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
@@ -35,32 +35,49 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var itemReferencesHomologado = _itemReferencesHomologadosService.GetById((int)item.ColorItemId);
+
+                        var catapromTransitOrderService = new Domain.Cataprom.TransitOrderService(unitOfWorkCataprom);
+                        catapromTransitOrderService.AddOrUpdate(new DataAccess.Cataprom.TransitOrder
+                        {
+                            Id = item.TransitOrderItemId,
+                            DeliveredDate = item.DeliveredDate.NullTo(DateTime.Now),
+                            DeliveredQuantity = item.DeliveredQuantity.NullTo(),
+                            Date = item.Date.NullTo(DateTime.Now),
+                            Activity = item.Activity,
+                            ColorItemId = itemReferencesHomologado.ReferenceIdHomologado
+                        });
+                        catapromTransitOrderService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update a TransitOrder from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a TransitOrder from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var itemReferencesHomologado = _itemReferencesHomologadosService.GetById((int)item.ColorItemId);
-
-                    _catapromTransitOrderService.AddOrUpdate(new DataAccess.Cataprom.TransitOrder
+                    if (allDestinationsOk)
                     {
-                        Id = item.TransitOrderItemId,
-                        DeliveredDate = item.DeliveredDate.NullTo(DateTime.Now),
-                        DeliveredQuantity = item.DeliveredQuantity.NullTo(),
-                        Date = item.Date.NullTo(DateTime.Now),
-                        Activity = item.Activity,
-                        ColorItemId = itemReferencesHomologado.ReferenceIdHomologado                       
-                    });
-                    _catapromTransitOrderService.SaveChanges();
-                    _aldebaranTransitOrderService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a TransitOrder from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranTransitOrderService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a TransitOrder from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranTransitOrderService.Update(item);
+                    {
+                        _aldebaranTransitOrderService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -73,7 +90,7 @@ namespace AutomataExistencias.Application
         }
         public void ReverseSync(IEnumerable<TransitOrder> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(t => t.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
@@ -84,22 +101,39 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
-                try
-                {   
-                    _catapromTransitOrderService.Remove(new DataAccess.Cataprom.TransitOrder { Id = item.TransitOrderItemId });
-                    _catapromTransitOrderService.SaveChanges();
-                    _aldebaranTransitOrderService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
                 {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a TransitOrder from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    try
+                    {
+                        var catapromTransitOrderService = new Domain.Cataprom.TransitOrderService(unitOfWorkCataprom);
+                        catapromTransitOrderService.Remove(new DataAccess.Cataprom.TransitOrder { Id = item.TransitOrderItemId });
+                        catapromTransitOrderService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete a TransitOrder from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a TransitOrder from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
+                try
+                {
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranTransitOrderService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a TransitOrder from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranTransitOrderService.Update(item);
+                    {
+                        _aldebaranTransitOrderService.Update(item);
+                    }
                 }
                 finally
                 {

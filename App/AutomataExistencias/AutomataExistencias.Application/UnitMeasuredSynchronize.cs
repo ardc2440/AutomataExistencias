@@ -12,19 +12,19 @@ namespace AutomataExistencias.Application
     {
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
-        private readonly Domain.Cataprom.IUnitMeasuredService _catapromUnitMeasuredService;
+        private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService; 
 
-        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, Domain.Cataprom.IUnitMeasuredService catapromUnitMeasuredService)
+        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, ICatapromDestinationRunner catapromDestinationRunner)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
-            _catapromUnitMeasuredService = catapromUnitMeasuredService;
+            _catapromDestinationRunner = catapromDestinationRunner;
             _measureUnitsHomologadosService = measureUnitsHomologadosService;
         }
         public void Sync(IEnumerable<UnitMeasured> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList(); ;
+            var dataFirebird = data.OrderBy(u => u.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
@@ -35,29 +35,46 @@ namespace AutomataExistencias.Application
             var inserted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var measureUnitHomolgado = _measureUnitsHomologadosService.GetById(item.UnitMeasuredId);
+
+                        var catapromUnitMeasuredService = new Domain.Cataprom.UnitMeasuredService(unitOfWorkCataprom);
+                        catapromUnitMeasuredService.AddOrUpdate(new DataAccess.Cataprom.UnitMeasured
+                        {
+                            Id = measureUnitHomolgado.MeasureUnitIdHomologado,
+                            Name = item.Name,
+                            Active = "A"
+                        });
+                        catapromUnitMeasuredService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to insert/update a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var measureUnitHomolgado = _measureUnitsHomologadosService.GetById(item.UnitMeasuredId);
-
-                    _catapromUnitMeasuredService.AddOrUpdate(new DataAccess.Cataprom.UnitMeasured
+                    if (allDestinationsOk)
                     {
-                        Id = measureUnitHomolgado.MeasureUnitIdHomologado,
-                        Name = item.Name,
-                        Active = "A"
-                    });
-                    _catapromUnitMeasuredService.SaveChanges();
-                    _aldebaranUnitMeasuredService.Remove(item);
-                    inserted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to insert/update a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        _aldebaranUnitMeasuredService.Remove(item);
+                        inserted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranUnitMeasuredService.Update(item);
+                    {
+                        _aldebaranUnitMeasuredService.Update(item);
+                    }
                 }
                 finally
                 {
@@ -71,7 +88,7 @@ namespace AutomataExistencias.Application
 
         public void ReverseSync(IEnumerable<UnitMeasured> data, int syncAttempts)
         {
-            var dataFirebird = data.ToList();
+            var dataFirebird = data.OrderBy(u => u.Id).ToList();
             if (!dataFirebird.Any())
             {
                 _logger.Info("No records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
@@ -82,24 +99,41 @@ namespace AutomataExistencias.Application
             var deleted = 0;
             foreach (var item in dataFirebird)
             {
+                var allDestinationsOk = true;
+
+                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                {
+                    try
+                    {
+                        var measureUnitHomolgado = _measureUnitsHomologadosService.GetById(item.UnitMeasuredId);
+
+                        var catapromUnitMeasuredService = new Domain.Cataprom.UnitMeasuredService(unitOfWorkCataprom);
+                        catapromUnitMeasuredService.Remove(new DataAccess.Cataprom.UnitMeasured { Id = measureUnitHomolgado.MeasureUnitIdHomologado });
+                        catapromUnitMeasuredService.SaveChanges();
+                    }
+                    catch (Exception ex)
+                    {
+                        allDestinationsOk = false;
+                        item.Attempts++;
+                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        if (item.Attempts < syncAttempts)
+                            _logger.Error($"Internal error when trying to delete a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        else
+                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    }
+                });
+
                 try
                 {
-                    var measureUnitHomolgado = _measureUnitsHomologadosService.GetById(item.UnitMeasuredId);
-
-                    _catapromUnitMeasuredService.Remove(new DataAccess.Cataprom.UnitMeasured { Id = measureUnitHomolgado.MeasureUnitIdHomologado });
-                    _catapromUnitMeasuredService.SaveChanges();
-                    _aldebaranUnitMeasuredService.Remove(item);
-                    deleted++;
-                }
-                catch (Exception ex)
-                {
-                    item.Attempts++;
-                    item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
-                    if (item.Attempts < syncAttempts)
-                        _logger.Error($"Internal error when trying to delete a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                    if (allDestinationsOk)
+                    {
+                        _aldebaranUnitMeasuredService.Remove(item);
+                        deleted++;
+                    }
                     else
-                        _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
-                    _aldebaranUnitMeasuredService.Update(item);
+                    {
+                        _aldebaranUnitMeasuredService.Update(item);
+                    }
                 }
                 finally
                 {
