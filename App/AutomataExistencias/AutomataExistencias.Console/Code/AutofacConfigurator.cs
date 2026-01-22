@@ -53,6 +53,9 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.PackagingService>().As<Domain.Aldebaran.IPackagingService>();
             builder.RegisterType<Domain.Aldebaran.CleanService>().As<Domain.Aldebaran.ICleanService>();
             builder.RegisterType<Domain.Aldebaran.InventoryAutomationConnectionService>().As<Domain.Aldebaran.IInventoryAutomationConnectionService>();
+            builder.RegisterType<Domain.Aldebaran.AutomataNotificationRecipientService>().As<Domain.Aldebaran.IAutomataNotificationRecipientService>();
+            builder.RegisterType<Domain.Aldebaran.AutomataConnectivityPatternService>().As<Domain.Aldebaran.IAutomataConnectivityPatternService>();
+            builder.RegisterType<Domain.Aldebaran.AutomataConnectivityThresholdService>().As<Domain.Aldebaran.IAutomataConnectivityThresholdService>();
 
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemsHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemsHomologadosService>();
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemReferencesHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService>();

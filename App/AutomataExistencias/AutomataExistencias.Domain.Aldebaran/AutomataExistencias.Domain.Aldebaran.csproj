@@ -62,6 +62,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutomataConnectivityPatternService.cs" />
+    <Compile Include="AutomataConnectivityThresholdService.cs" />
+    <Compile Include="AutomataNotificationRecipientService.cs" />
     <Compile Include="CleanService.cs">
       <DependentUpon>ICleanService.cs</DependentUpon>
     </Compile>
@@ -75,6 +78,9 @@
     <Compile Include="Homologacion\MeasureUnitsHomologadosService.cs" />
     <Compile Include="Homologacion\PackagingHomologadosService.cs" />
     <Compile Include="Homologacion\ItemsHomologadosService.cs" />
+    <Compile Include="IAutomataConnectivityPatternService.cs" />
+    <Compile Include="IAutomataConnectivityThresholdService.cs" />
+    <Compile Include="IAutomataNotificationRecipientService.cs" />
     <Compile Include="ICleanService.cs" />
     <Compile Include="IInventoryAutomationConnectionService.cs" />
     <Compile Include="IItemByColorService.cs" />
