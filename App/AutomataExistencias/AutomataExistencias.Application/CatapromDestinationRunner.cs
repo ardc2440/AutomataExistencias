@@ -2,6 +2,7 @@ using System;
 using AutomataExistencias.DataAccess.Core;
 using AutomataExistencias.DataAccess.Core.Contract;
 using AutomataExistencias.Domain.Aldebaran;
+using AutomataExistencias.DataAccess.Aldebaran;
 
 namespace AutomataExistencias.Application
 {
@@ -14,7 +15,7 @@ namespace AutomataExistencias.Application
             _inventoryConnectionService = inventoryConnectionService;
         }
 
-        public void RunForAllDestinations(Action<IUnitOfWorkCataprom> action)
+        public void RunForAllDestinations(System.Action<IUnitOfWorkCataprom, InventoryAutomationConnection> action)
         {
             if (action == null) throw new ArgumentNullException(nameof(action));
 
@@ -25,7 +26,7 @@ namespace AutomataExistencias.Application
                 using (var context = new CatapromBaseContext(connectionString))
                 {
                     var unitOfWork = new UnitOfWorkCataprom(context);
-                    action(unitOfWork);
+                    action(unitOfWork, connection);
                 }
             }
         }

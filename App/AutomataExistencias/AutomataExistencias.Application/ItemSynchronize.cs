@@ -41,7 +41,7 @@ namespace AutomataExistencias.Application
             {
                 var allDestinationsOk = true;
 
-                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                _catapromDestinationRunner.RunForAllDestinations((unitOfWorkCataprom, connection) =>
                 {
                     try
                     {
@@ -81,11 +81,12 @@ namespace AutomataExistencias.Application
                     {
                         allDestinationsOk = false;
                         item.Attempts++;
-                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
+                        item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"Internal error when trying to insert/update an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     }
                 });
 
@@ -125,7 +126,7 @@ namespace AutomataExistencias.Application
             {
                 var allDestinationsOk = true;
 
-                _catapromDestinationRunner.RunForAllDestinations(unitOfWorkCataprom =>
+                _catapromDestinationRunner.RunForAllDestinations((unitOfWorkCataprom, connection) =>
                 {
                     try
                     {
@@ -139,11 +140,12 @@ namespace AutomataExistencias.Application
                     {
                         allDestinationsOk = false;
                         item.Attempts++;
-                        item.Exception = $"Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
+                        var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
+                        item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"Internal error when trying to delete an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to delete an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                     }
                 });
 
