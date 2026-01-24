@@ -53,6 +53,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AutomataState.cs" />
     <Compile Include="Configuration\ApplicationConfigurator.cs">
       <DependentUpon>IConfigurator.cs</DependentUpon>
     </Compile>
@@ -66,6 +67,7 @@
     <Compile Include="Extensions\ExceptionExtension.cs" />
     <Compile Include="Extensions\IntExtension.cs" />
     <Compile Include="Extensions\TimeSpanExtension.cs" />
+    <Compile Include="IAutomataState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

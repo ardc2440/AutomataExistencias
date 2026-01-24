@@ -56,6 +56,14 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.AutomataNotificationRecipientService>().As<Domain.Aldebaran.IAutomataNotificationRecipientService>();
             builder.RegisterType<Domain.Aldebaran.AutomataConnectivityPatternService>().As<Domain.Aldebaran.IAutomataConnectivityPatternService>();
             builder.RegisterType<Domain.Aldebaran.AutomataConnectivityThresholdService>().As<Domain.Aldebaran.IAutomataConnectivityThresholdService>();
+            // Automata state (shared in-memory state)
+            builder.RegisterType<AutomataExistencias.Core.AutomataState>().As<AutomataExistencias.Core.IAutomataState>().SingleInstance();
+            
+            /* Connectivity classifier */
+            builder.RegisterType<AutomataExistencias.Application.ConnectivityErrorClassifier>().As<AutomataExistencias.Application.IConnectivityErrorClassifier>().SingleInstance();
+            
+            /* Notification service */
+            builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>();
 
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemsHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemsHomologadosService>();
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemReferencesHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService>();

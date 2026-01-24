@@ -63,12 +63,15 @@
     <Compile Include="CleanerProcess.cs">
       <DependentUpon>ICleanerProcess.cs</DependentUpon>
     </Compile>
+    <Compile Include="ConnectivityErrorClassifier.cs" />
     <Compile Include="ICleanerProcess.cs" />
+    <Compile Include="IConnectivityErrorClassifier.cs" />
     <Compile Include="IDestinationStockSyncRunner.cs" />
     <Compile Include="IItemByColorSynchronize.cs" />
     <Compile Include="IItemSynchronize.cs" />
     <Compile Include="ILineSynchronize.cs" />
     <Compile Include="IMoneySynchronize.cs" />
+    <Compile Include="INotificationService.cs" />
     <Compile Include="IPackagingSynchronize.cs" />
     <Compile Include="IStockSynchronize.cs" />
     <Compile Include="IUpdateProcessSynchronize.cs" />
@@ -86,6 +89,7 @@
     <Compile Include="MoneySynchronize.cs">
       <DependentUpon>IMoneySynchronize.cs</DependentUpon>
     </Compile>
+    <Compile Include="NotificationService.cs" />
     <Compile Include="PackagingSynchronize.cs">
       <DependentUpon>IPackagingSynchronize.cs</DependentUpon>
     </Compile>

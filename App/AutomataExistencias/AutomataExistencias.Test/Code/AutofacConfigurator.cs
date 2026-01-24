@@ -26,6 +26,15 @@ namespace AutomataExistencias.Test.Code
             builder.RegisterType<UnitOfWorkAldebaran>().As<IUnitOfWorkAldebaran>();
             builder.RegisterType<UnitOfWorkCataprom>().As<IUnitOfWorkCataprom>();
 
+            // Automata state singleton for tests
+            builder.RegisterType<AutomataExistencias.Core.AutomataState>().As<AutomataExistencias.Core.IAutomataState>().SingleInstance();
+
+            // Connectivity classifier for tests
+            builder.RegisterType<AutomataExistencias.Application.ConnectivityErrorClassifier>().As<AutomataExistencias.Application.IConnectivityErrorClassifier>().SingleInstance();
+
+            // Notification service for tests
+            builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>();
+
             /*Cataprom*/
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
             builder.RegisterType<Domain.Cataprom.ItemService>().As<Domain.Cataprom.IItemService>();
