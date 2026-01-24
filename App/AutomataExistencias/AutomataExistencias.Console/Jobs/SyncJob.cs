@@ -14,6 +14,11 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class SyncJob : IJob
     {
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly AutomataExistencias.Application.INotificationService _notificationService;
+        private readonly Domain.Aldebaran.IAutomataConnectivityThresholdService _thresholdService;
+        private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
         /*ItemByColor*/
         private readonly IItemByColorSynchronize _itemByColorSynchronize;
         private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
@@ -82,6 +87,11 @@ namespace AutomataExistencias.Console.Jobs
             _aldebaranUnitMeasuredService = container.Resolve<Domain.Aldebaran.IUnitMeasuredService>();
             /*UpdateProcess*/ 
             _updateProcessSynchronize = container.Resolve<IUpdateProcessSynchronize>();
+            _automataState = container.Resolve<AutomataExistencias.Core.IAutomataState>();
+            _connectivityErrorClassifier = container.Resolve<AutomataExistencias.Application.IConnectivityErrorClassifier>();
+            _notificationService = container.Resolve<AutomataExistencias.Application.INotificationService>();
+            _thresholdService = container.Resolve<Domain.Aldebaran.IAutomataConnectivityThresholdService>();
+            _inventoryConnectionService = container.Resolve<Domain.Aldebaran.IInventoryAutomationConnectionService>();
             /*Others*/
             var configurator = container.Resolve<IConfigurator>();
             _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
@@ -151,6 +161,15 @@ namespace AutomataExistencias.Console.Jobs
 
         public void Execute(IJobExecutionContext context)
         {
+            if (_automataState.IsDestinationConnectivityDown || _automataState.IsOriginConnectivityDown)
+            {
+                _logger.Warn("Destination or origin connectivity is marked as DOWN. Skipping SyncJob execution.");
+                return;
+            }
+
+            // Reset per-run counters
+            _automataState.ResetConnectivityErrorCounts();
+
             var scheduleSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence"].Split(';').ToList();
             var scheduleReverseSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence.Reverse"].Split(';').ToList();
 
@@ -177,6 +196,16 @@ namespace AutomataExistencias.Console.Jobs
                 catch (Exception ex)
                 {
                     _logger.Error($"An exception has occurred while execution of {jobKey} | Exception: {ex.ToJson()}");
+                    // If exception contains connectivity patterns, increment counters
+                    try
+                    {
+                        if (_connectivityErrorClassifier.IsDestinationConnectivityError(ex.Message))
+                        {
+                            var threshold = _thresholdService.GetThresholdForEntity(jobKey.Replace("Job", ""));
+                            _automataState.IncrementConnectivityError(jobKey, 0);
+                        }
+                    }
+                    catch { }
                 }
                 finally
                 {
@@ -184,6 +213,29 @@ namespace AutomataExistencias.Console.Jobs
                     var elapsedMs = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
                     _logger.Info($"[{jobKey}] has finished in {elapsedMs.ToReadableString()}");
                 }
+            }
+
+            // After running all jobs, evaluate connectivity error counts to decide if we should mark DOWN
+            try
+            {
+                var totalErrors = _automataState.GetConnectivityErrorCount("Global");
+                var globalThreshold = _thresholdService.GetThresholdForEntity("Global")?.ErrorCountThreshold ?? 5;
+                if (totalErrors >= globalThreshold)
+                {
+                    if (!_automataState.IsDestinationConnectivityDown)
+                    {
+                        _automataState.IsDestinationConnectivityDown = true;
+                        if (_automataState.DestinationConnectivityDownSince == null)
+                            _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
+
+                        var connections = _inventoryConnectionService.GetActive().Where(c => _automataState.GetConnectionsWithErrors().Contains(c.InventoryAutomationConnectionId)).ToList();
+                        _notificationService.NotifyConnectivityDown(connections, _automataState.DestinationConnectivityDownSince.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error evaluating connectivity error thresholds: {ex.ToJson()}");
             }
         }
     }
