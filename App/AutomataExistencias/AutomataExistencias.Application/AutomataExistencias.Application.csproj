@@ -73,6 +73,7 @@
     <Compile Include="IMoneySynchronize.cs" />
     <Compile Include="INotificationService.cs" />
     <Compile Include="IPackagingSynchronize.cs" />
+    <Compile Include="IStartupRecoveryChecker.cs" />
     <Compile Include="IStockSynchronize.cs" />
     <Compile Include="IUpdateProcessSynchronize.cs" />
     <Compile Include="ItemByColorSynchronize.cs">
@@ -94,6 +95,7 @@
       <DependentUpon>IPackagingSynchronize.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StartupRecoveryChecker.cs" />
     <Compile Include="StockSynchronize.cs">
       <DependentUpon>IStockSynchronize.cs</DependentUpon>
     </Compile>

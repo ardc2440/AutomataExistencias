@@ -72,8 +72,8 @@ namespace AutomataExistencias.Application
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         try
                         {
-                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
-                                _automataState.IncrementConnectivityError("Packaging", connection.InventoryAutomationConnectionId);
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception);
+                            _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
                     }
@@ -138,8 +138,8 @@ namespace AutomataExistencias.Application
 
                         try
                         {
-                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
-                                _automataState.IncrementConnectivityError("Packaging", connection.InventoryAutomationConnectionId);
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception);
+                            _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
                     }

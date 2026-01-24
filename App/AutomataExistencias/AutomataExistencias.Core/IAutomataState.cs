@@ -11,8 +11,18 @@ namespace AutomataExistencias.Core
         DateTime? OriginConnectivityDownSince { get; set; }
         
         void IncrementConnectivityError(string entityName, int connectionId);
-        int GetConnectivityErrorCount(string entityName);
+        // Record an attempt for a connection. isConnectivityError indicates whether it was a connectivity error.
+        void RecordAttempt(int connectionId, bool isConnectivityError);
+
+        // Counts and metrics within a sliding window (minutes)
+        int GetTotalAttempts(int windowMinutes);
+        int GetConnectivityErrorCount(int windowMinutes);
+        double GetConnectivityErrorPercentage(int windowMinutes);
+
         System.Collections.Generic.IEnumerable<int> GetConnectionsWithErrors();
+        int GetConsecutiveFailures(int connectionId);
+        void ClearErrorsForConnection(int connectionId);
         void ResetConnectivityErrorCounts();
+        int GetTotalConnectivityErrorCount();
     }
 }

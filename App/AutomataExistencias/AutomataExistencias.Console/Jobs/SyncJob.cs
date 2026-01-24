@@ -48,6 +48,10 @@ namespace AutomataExistencias.Console.Jobs
         /*Others*/
         private readonly Logger _logger;
         private readonly int _syncAttempts;
+        private readonly int _windowMinutes;
+        private readonly double _percentThreshold;
+        private readonly int _minAttempts;
+        private readonly int _consecutiveThreshold;
         /*Data*/
         private IEnumerable<DataAccess.Aldebaran.Line> _lineData;
         private IEnumerable<DataAccess.Aldebaran.Money> _moneyData;
@@ -95,6 +99,16 @@ namespace AutomataExistencias.Console.Jobs
             /*Others*/
             var configurator = container.Resolve<IConfigurator>();
             _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
+
+            // Connectivity detection settings from config (safe parse)
+            int.TryParse(configurator.GetKey("ConnectivityError.WindowMinutes"), out _windowMinutes);
+            if (_windowMinutes <= 0) _windowMinutes = 15;
+            double.TryParse(configurator.GetKey("ConnectivityError.PercentThreshold"), out _percentThreshold);
+            if (_percentThreshold <= 0) _percentThreshold = 70;
+            int.TryParse(configurator.GetKey("ConnectivityError.MinAttempts"), out _minAttempts);
+            if (_minAttempts <= 0) _minAttempts = 5;
+            int.TryParse(configurator.GetKey("ConnectivityError.ConsecutiveThreshold"), out _consecutiveThreshold);
+            if (_consecutiveThreshold <= 0) _consecutiveThreshold = 10;
             _logger = LogManager.GetCurrentClassLogger();
         }
         private void Sync(string key)
@@ -167,8 +181,8 @@ namespace AutomataExistencias.Console.Jobs
                 return;
             }
 
-            // Reset per-run counters
-            _automataState.ResetConnectivityErrorCounts();
+            // Per-run we do not fully reset sliding-window counters; keep window behavior
+            // but we may clear short-lived per-run structures if needed. For now keep as-is.
 
             var scheduleSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence"].Split(';').ToList();
             var scheduleReverseSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence.Reverse"].Split(';').ToList();
@@ -201,8 +215,7 @@ namespace AutomataExistencias.Console.Jobs
                     {
                         if (_connectivityErrorClassifier.IsDestinationConnectivityError(ex.Message))
                         {
-                            var threshold = _thresholdService.GetThresholdForEntity(jobKey.Replace("Job", ""));
-                            _automataState.IncrementConnectivityError(jobKey, 0);
+                            _automataState.RecordAttempt(0, true);
                         }
                     }
                     catch { }
@@ -218,9 +231,13 @@ namespace AutomataExistencias.Console.Jobs
             // After running all jobs, evaluate connectivity error counts to decide if we should mark DOWN
             try
             {
-                var totalErrors = _automataState.GetConnectivityErrorCount("Global");
-                var globalThreshold = _thresholdService.GetThresholdForEntity("Global")?.ErrorCountThreshold ?? 5;
-                if (totalErrors >= globalThreshold)
+                var totalAttempts = _automataState.GetTotalAttempts(_windowMinutes);
+                var totalErrors = _automataState.GetConnectivityErrorCount(_windowMinutes);
+                var pct = _automataState.GetConnectivityErrorPercentage(_windowMinutes);
+
+                _logger.Info($"Connectivity window {_windowMinutes}min: attempts={totalAttempts}, errors={totalErrors}, percent={pct:0.##}%");
+
+                if (totalAttempts >= _minAttempts && pct >= _percentThreshold)
                 {
                     if (!_automataState.IsDestinationConnectivityDown)
                     {
@@ -230,6 +247,25 @@ namespace AutomataExistencias.Console.Jobs
 
                         var connections = _inventoryConnectionService.GetActive().Where(c => _automataState.GetConnectionsWithErrors().Contains(c.InventoryAutomationConnectionId)).ToList();
                         _notificationService.NotifyConnectivityDown(connections, _automataState.DestinationConnectivityDownSince.Value);
+                    }
+                }
+
+                // Also check consecutive failures per connection
+                var activeConnections = _inventoryConnectionService.GetActive();
+                foreach (var conn in activeConnections)
+                {
+                    var cons = _automataState.GetConsecutiveFailures(conn.InventoryAutomationConnectionId);
+                    if (cons >= _consecutiveThreshold)
+                    {
+                        if (!_automataState.IsDestinationConnectivityDown)
+                        {
+                            _automataState.IsDestinationConnectivityDown = true;
+                            if (_automataState.DestinationConnectivityDownSince == null)
+                                _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
+
+                            _notificationService.NotifyConnectivityDown(new[] { conn }, _automataState.DestinationConnectivityDownSince.Value);
+                            break;
+                        }
                     }
                 }
             }

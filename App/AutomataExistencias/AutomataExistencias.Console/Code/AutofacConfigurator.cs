@@ -61,6 +61,7 @@ namespace AutomataExistencias.Console.Code
             
             /* Connectivity classifier */
             builder.RegisterType<AutomataExistencias.Application.ConnectivityErrorClassifier>().As<AutomataExistencias.Application.IConnectivityErrorClassifier>().SingleInstance();
+            builder.RegisterType<AutomataExistencias.Application.StartupRecoveryChecker>().As<AutomataExistencias.Application.IStartupRecoveryChecker>();
             
             /* Notification service */
             builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>();

@@ -72,8 +72,8 @@ namespace AutomataExistencias.Application
 
                         try
                         {
-                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
-                                _automataState.IncrementConnectivityError("Stock", connection.InventoryAutomationConnectionId);
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception);
+                            _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
                     }

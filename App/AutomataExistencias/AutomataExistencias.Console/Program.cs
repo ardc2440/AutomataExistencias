@@ -30,6 +30,19 @@ namespace AutomataExistencias.Console
                     return;
                 }
 
+                // Startup recovery check: if many pending connectivity errors exist, trigger recovery flow before starting agent
+                var recoveryChecker = container.Resolve<AutomataExistencias.Application.IStartupRecoveryChecker>();
+                if (recoveryChecker.ShouldRunRecoveryOnStartup())
+                {
+                    logger.Warn("StartupRecoveryChecker determined recovery should run before starting the agent. Executing lightweight recovery/notification.");
+                    var ok = recoveryChecker.TryRunRecoveryOnStartup();
+                    if (!ok)
+                    {
+                        logger.Error("Startup recovery could not complete. Agent will not start until recovery is addressed.");
+                        return;
+                    }
+                }
+
                 HostFactory.Run(x =>
                 {
                     x.Service<Service>(s =>
