@@ -14,13 +14,17 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IPackagingHomologadosService _packagingHomologadosService;
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, ICatapromDestinationRunner catapromDestinationRunner)
+        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranPackagingService = aldebaranPackagingService;
             _catapromDestinationRunner = catapromDestinationRunner;
             _packagingHomologadosService = packagingHomologadosService;
+            _automataState = automataState;
+            _connectivityErrorClassifier = connectivityErrorClassifier;
         }
         public void Sync(IEnumerable<Packaging> data, int syncAttempts)
         {
@@ -66,6 +70,12 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to insert/update a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("Packaging", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 
@@ -125,6 +135,13 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to delete a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("Packaging", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 

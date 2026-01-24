@@ -14,13 +14,17 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService; 
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, ICatapromDestinationRunner catapromDestinationRunner)
+        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
             _catapromDestinationRunner = catapromDestinationRunner;
             _measureUnitsHomologadosService = measureUnitsHomologadosService;
+            _automataState = automataState;
+            _connectivityErrorClassifier = connectivityErrorClassifier;
         }
         public void Sync(IEnumerable<UnitMeasured> data, int syncAttempts)
         {
@@ -62,6 +66,13 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to insert/update a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("UnitMeasured", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 

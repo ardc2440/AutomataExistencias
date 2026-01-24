@@ -15,13 +15,17 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IStockService _aldebaranStockService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public StockSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IStockService aldebaranStockService, ICatapromDestinationRunner catapromDestinationRunner)
+        public StockSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IStockService aldebaranStockService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranStockService = aldebaranStockService;
             _catapromDestinationRunner = catapromDestinationRunner;
             _itemReferencesHomologadosService = itemReferencesHomologadosService;
+            _automataState = automataState;
+            _connectivityErrorClassifier = connectivityErrorClassifier;
         }
         public void Sync(IEnumerable<Stock> data, int syncAttempts)
         {
@@ -65,6 +69,13 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to insert/update a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("Stock", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 

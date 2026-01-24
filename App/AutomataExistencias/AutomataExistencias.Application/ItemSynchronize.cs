@@ -13,15 +13,19 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IItemService _aldebaranItemService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
         private readonly Domain.Aldebaran.Homologacion.IItemsHomologadosService _itemsHomologadosService;
         private readonly Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService _currenciesHomologadosService;
         private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService;
 
-        public ItemSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.Homologacion.IItemsHomologadosService itemsHomologadosService, ICatapromDestinationRunner catapromDestinationRunner)
+        public ItemSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IItemService aldebaranItemService, Domain.Aldebaran.Homologacion.IItemsHomologadosService itemsHomologadosService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemService = aldebaranItemService;
             _catapromDestinationRunner = catapromDestinationRunner;
+            _automataState = automataState;
+            _connectivityErrorClassifier = connectivityErrorClassifier;
             _itemsHomologadosService = itemsHomologadosService;
             _currenciesHomologadosService = currenciesHomologadosService;
             _measureUnitsHomologadosService = measureUnitsHomologadosService;
@@ -87,6 +91,13 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to insert/update an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("Item", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 
@@ -146,6 +157,13 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to delete an Item from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete an Item from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("Item", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 

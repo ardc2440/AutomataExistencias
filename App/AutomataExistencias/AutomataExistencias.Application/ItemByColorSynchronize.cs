@@ -14,13 +14,17 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, ICatapromDestinationRunner catapromDestinationRunner)
+        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemByColorService = aldebaranItemByColorService;
             _catapromDestinationRunner = catapromDestinationRunner;
             _itemReferencesHomologadosService = itemReferencesHomologadosService;
+            _automataState = automataState;
+            _connectivityErrorClassifier = connectivityErrorClassifier;
         }
         public void Sync(IEnumerable<ItemByColor> data, int syncAttempts)
         {
@@ -76,6 +80,12 @@ namespace AutomataExistencias.Application
                             _logger.Error($"[{connInfo}] Internal error when trying to insert/update an ItemByColor from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         else
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an ItemByColor from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                        try
+                        {
+                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
+                                _automataState.IncrementConnectivityError("ItemByColor", connection.InventoryAutomationConnectionId);
+                        }
+                        catch { }
                     }
                 });
 
