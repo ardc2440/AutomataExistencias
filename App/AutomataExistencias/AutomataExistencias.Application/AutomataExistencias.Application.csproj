@@ -76,6 +76,7 @@
     <Compile Include="IRecoveryService.cs" />
     <Compile Include="IStartupRecoveryChecker.cs" />
     <Compile Include="IStockSynchronize.cs" />
+    <Compile Include="ISyncOrchestrator.cs" />
     <Compile Include="IUpdateProcessSynchronize.cs" />
     <Compile Include="ItemByColorSynchronize.cs">
       <DependentUpon>IItemByColorSynchronize.cs</DependentUpon>
@@ -101,6 +102,7 @@
     <Compile Include="StockSynchronize.cs">
       <DependentUpon>IStockSynchronize.cs</DependentUpon>
     </Compile>
+    <Compile Include="SyncOrchestratorService.cs" />
     <Compile Include="TransitOrderSynchronize.cs">
       <DependentUpon>ITransitOrderSynchronize.cs</DependentUpon>
     </Compile>

@@ -23,7 +23,10 @@ namespace AutomataExistencias.Application
         private readonly AutomataExistencias.Core.IAutomataState _automataState;
         private readonly AutomataExistencias.Application.INotificationService _notificationService;
         private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
+        private readonly Domain.Aldebaran.IItemsMasterService _itemsMasterService;
+        private readonly Domain.Aldebaran.IRecoveryDomainService _recoveryDomainService;
         private readonly AutomataExistencias.Core.Configuration.IConfigurator _configurator;
+        private readonly ISyncOrchestrator _syncOrchestrator;
         private readonly Logger _logger;
 
         public RecoveryService(Domain.Aldebaran.IItemService itemService,
@@ -42,6 +45,9 @@ namespace AutomataExistencias.Application
             AutomataExistencias.Core.IAutomataState automataState,
             INotificationService notificationService,
             Domain.Aldebaran.IInventoryAutomationConnectionService inventoryConnectionService,
+            Domain.Aldebaran.IItemsMasterService itemsMasterService,
+            Domain.Aldebaran.IRecoveryDomainService recoveryDomainService,
+            ISyncOrchestrator syncOrchestrator,
             AutomataExistencias.Core.Configuration.IConfigurator configurator)
         {
             _itemService = itemService;
@@ -60,6 +66,9 @@ namespace AutomataExistencias.Application
             _automataState = automataState;
             _notificationService = notificationService;
             _inventoryConnectionService = inventoryConnectionService;
+            _itemsMasterService = itemsMasterService;
+            _recoveryDomainService = recoveryDomainService;
+            _syncOrchestrator = syncOrchestrator;
             _configurator = configurator;
             _logger = LogManager.GetCurrentClassLogger();
         }
@@ -70,82 +79,117 @@ namespace AutomataExistencias.Application
             {
                 _logger.Info("RecoveryService: starting single recovery attempt");
 
-                // Strategy: for each synchronizable entity, collect pending rows whose Exception classifies as connectivity error
+                // New orchestration: per-item recovery using master items and domain recovery service
                 var syncAttempts = 0;
                 int.TryParse(_configurator.GetKey("SyncAttempts"), out syncAttempts);
                 if (syncAttempts <= 0) syncAttempts = 1;
 
-                var totalProcessed = 0;
+                var batchSize = 0;
+                int.TryParse(_configurator.GetKey("Recovery.BatchSize"), out batchSize);
+                if (batchSize <= 0) batchSize = 10;
 
-                // Items
-                var items = _itemService.Get().Where(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception)).ToList();
-                if (items.Any())
+                var flagAttempts = int.MaxValue - 1000;
+                var itemTimeoutSeconds = 0;
+                int.TryParse(_configurator.GetKey("Recovery.ItemTimeoutSeconds"), out itemTimeoutSeconds);
+                if (itemTimeoutSeconds <= 0) itemTimeoutSeconds = 300;
+
+                var candidates = _recoveryDomainService.GetCandidateItemIds(syncAttempts).ToList();
+                if (!candidates.Any())
                 {
-                    _logger.Info($"RecoveryService: attempting recovery for {items.Count} Item records");
-                    _itemSynchronize.Sync(items, syncAttempts);
-                    totalProcessed += items.Count;
+                    _logger.Info("RecoveryService: no eligible articles to recover");
+                    return false;
                 }
 
-                // Stock
-                var stocks = _stockService.Get().Where(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception)).ToList();
-                if (stocks.Any())
+                var toProcess = candidates.Take(batchSize).ToList();
+                var processedArticles = 0;
+
+                foreach (var artId in toProcess)
                 {
-                    _logger.Info($"RecoveryService: attempting recovery for {stocks.Count} Stock records");
-                    _stockSynchronize.Sync(stocks, syncAttempts);
-                    totalProcessed += stocks.Count;
+                    try
+                    {
+                        _logger.Info($"RecoveryService: starting recovery for ItemId={artId}");
+
+                        // 1) Mark existing integration events so normal sync won't pick them
+                        _recoveryDomainService.MarkEventsAsFlagged(artId, flagAttempts);
+
+                        // 2) Unpublish via master items table (row-by-row update)
+                        _itemsMasterService.UpdateVisibility(artId, false);
+
+                        // 3) Execute sync runner to process the events generated by unpublish
+                        try
+                        {
+                            ExecuteSyncOnce(syncAttempts);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error($"RecoveryService: sync execution failed after unpublish for ItemId={artId}: {ex}");
+                        }
+
+                        // wait until events generated by unpublish are processed (poll)
+                        var waited = 0;
+                        while (_recoveryDomainService.CountPendingEvents(artId, syncAttempts) > 0 && waited < itemTimeoutSeconds)
+                        {
+                            System.Threading.Thread.Sleep(1000);
+                            waited++;
+                        }
+
+                        if (waited >= itemTimeoutSeconds)
+                        {
+                            _logger.Warn($"RecoveryService: timeout waiting after unpublish for ItemId={artId}");
+                            continue; // skip to next article
+                        }
+
+                        // 4) Republish
+                        _itemsMasterService.UpdateVisibility(artId, true);
+
+                        // 5) Execute sync runner again to process publish events
+                        try
+                        {
+                            ExecuteSyncOnce(syncAttempts);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error($"RecoveryService: sync execution failed after publish for ItemId={artId}: {ex}");
+                        }
+
+                        // wait until events generated by publish are processed (poll)
+                        waited = 0;
+                        while (_recoveryDomainService.CountPendingEvents(artId, syncAttempts) > 0 && waited < itemTimeoutSeconds)
+                        {
+                            System.Threading.Thread.Sleep(1000);
+                            waited++;
+                        }
+
+                        if (waited >= itemTimeoutSeconds)
+                        {
+                            _logger.Warn($"RecoveryService: timeout waiting after publish for ItemId={artId}");
+                            continue; // skip to next article
+                        }
+
+                        // 6) Clear all old events for the item
+                        _recoveryDomainService.ClearEventsForItem(artId);
+                        processedArticles++;
+                        _logger.Info($"RecoveryService: finished recovery for ItemId={artId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error($"RecoveryService: error recovering ItemId={artId} | {ex}");
+                    }
                 }
 
-                // Packaging
-                var packs = _packagingService.Get().Where(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception)).ToList();
-                if (packs.Any())
+                if (processedArticles > 0)
                 {
-                    _logger.Info($"RecoveryService: attempting recovery for {packs.Count} Packaging records");
-                    _packagingSynchronize.Sync(packs, syncAttempts);
-                    totalProcessed += packs.Count;
-                }
-
-                // TransitOrder
-                var trans = _transitOrderService.Get().Where(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception)).ToList();
-                if (trans.Any())
-                {
-                    _logger.Info($"RecoveryService: attempting recovery for {trans.Count} TransitOrder records");
-                    _transitOrderSynchronize.Sync(trans, syncAttempts);
-                    totalProcessed += trans.Count;
-                }
-
-                // ItemByColor
-                var bycolors = _itemByColorService.Get().Where(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception)).ToList();
-                if (bycolors.Any())
-                {
-                    _logger.Info($"RecoveryService: attempting recovery for {bycolors.Count} ItemByColor records");
-                    _itemByColorSynchronize.Sync(bycolors, syncAttempts);
-                    totalProcessed += bycolors.Count;
-                }
-
-                // Money and UnitMeasured optional
-                // money/unitMeasured recovery not implemented in this pass
-                var monies = new System.Collections.Generic.List<object>();
-
-                // After attempts, check remaining connectivity pendings
-                var remaining = 0;
-                remaining += _itemService.Get().Count(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception));
-                remaining += _stockService.Get().Count(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception));
-                remaining += _packagingService.Get().Count(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception));
-                remaining += _transitOrderService.Get().Count(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception));
-                remaining += _itemByColorService.Get().Count(i => !string.IsNullOrEmpty(i.Exception) && _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception));
-
-                if (remaining == 0)
-                {
-                    _logger.Info($"RecoveryService: recovery succeeded, cleared remaining connectivity pendings");
+                    _logger.Info($"RecoveryService: recovery succeeded for {processedArticles} articles");
+                    var since = _automataState.DestinationConnectivityDownSince ?? DateTime.UtcNow;
+                    var until = DateTime.UtcNow;
                     _automataState.ResetConnectivityErrorCounts();
                     _automataState.IsDestinationConnectivityDown = false;
                     _automataState.DestinationConnectivityDownSince = null;
+                    _notificationService.NotifyConnectivityRecovered(processedArticles, since, until);
                     return true;
                 }
 
-                _logger.Warn($"RecoveryService: recovery finished but {remaining} connectivity pendings remain");
-                var connections = _inventoryConnectionService.GetActive();
-                _notificationService.NotifyConnectivityDown(connections, DateTime.UtcNow);
+                _logger.Warn("RecoveryService: no articles were fully recovered in this run");
                 return false;
             }
             catch (Exception ex)
@@ -153,6 +197,13 @@ namespace AutomataExistencias.Application
                 _logger.Error($"RecoveryService error: {ex}");
                 return false;
             }
+        }
+
+        private void ExecuteSyncOnce(int syncAttempts)
+        {
+            // Reuse SyncJob.RunOnceForced by resolving it from container and invoking the method
+            // execute orchestrator via injected service
+            _syncOrchestrator.RunOnce(true);
         }
     }
 }

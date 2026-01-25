@@ -85,11 +85,13 @@
     <Compile Include="IInventoryAutomationConnectionService.cs" />
     <Compile Include="IItemByColorService.cs" />
     <Compile Include="IItemService.cs" />
+    <Compile Include="IItemsMasterService.cs" />
     <Compile Include="ILineService.cs" />
     <Compile Include="IMoneyService.cs" />
     <Compile Include="InventoryAutomationConnectionService.cs" />
     <Compile Include="InventoryAutomationConnectionStringBuilder.cs" />
     <Compile Include="IPackagingService.cs" />
+    <Compile Include="IRecoveryDomainService.cs" />
     <Compile Include="IStockService.cs" />
     <Compile Include="ItemByColorService.cs">
       <DependentUpon>IItemByColorService.cs</DependentUpon>
@@ -97,6 +99,7 @@
     <Compile Include="ItemService.cs">
       <DependentUpon>IItemService.cs</DependentUpon>
     </Compile>
+    <Compile Include="ItemsMasterService.cs" />
     <Compile Include="ITransitOrderService.cs" />
     <Compile Include="IUnitMeasuredService.cs" />
     <Compile Include="LineService.cs">
@@ -109,6 +112,7 @@
       <DependentUpon>IPackagingService.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RecoveryDomainService.cs" />
     <Compile Include="StockService.cs">
       <DependentUpon>IStockService.cs</DependentUpon>
     </Compile>

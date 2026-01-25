@@ -85,6 +85,8 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<CleanerProcess>().As<ICleanerProcess>();
             builder.RegisterType<TransitOrderSynchronize>().As<ITransitOrderSynchronize>();
             builder.RegisterType<UnitMeasuredSynchronize>().As<IUnitMeasuredSynchronize>();
+            // Sync orchestrator service used by Recovery to trigger immediate processing
+            builder.RegisterType<AutomataExistencias.Application.SyncOrchestratorService>().As<AutomataExistencias.Application.ISyncOrchestrator>().SingleInstance();
 
             /*Jobs*/
             builder.RegisterType<JobSchedulerFactory>().As<IJobSchedulerFactory>();

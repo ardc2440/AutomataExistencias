@@ -47,6 +47,7 @@ namespace AutomataExistencias.Console.Jobs
         private readonly IUpdateProcessSynchronize _updateProcessSynchronize;        
         /*Others*/
         private readonly Logger _logger;
+        private readonly IConfigurator _configurator;
         private readonly int _syncAttempts;
         private readonly int _windowMinutes;
         private readonly double _percentThreshold;
@@ -98,6 +99,7 @@ namespace AutomataExistencias.Console.Jobs
             _inventoryConnectionService = container.Resolve<Domain.Aldebaran.IInventoryAutomationConnectionService>();
             /*Others*/
             var configurator = container.Resolve<IConfigurator>();
+            _configurator = configurator;
             _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
 
             // Connectivity detection settings from config (safe parse)
@@ -110,6 +112,99 @@ namespace AutomataExistencias.Console.Jobs
             int.TryParse(configurator.GetKey("ConnectivityError.ConsecutiveThreshold"), out _consecutiveThreshold);
             if (_consecutiveThreshold <= 0) _consecutiveThreshold = 10;
             _logger = LogManager.GetCurrentClassLogger();
+        }
+
+        // Run full sync sequence regardless of AutomataState (used by Recovery)
+        public void RunOnceForced()
+        {
+            var scheduleSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence"].Split(';').ToList();
+            var scheduleReverseSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence.Reverse"].Split(';').ToList();
+
+            var schedule = scheduleSequence;
+            schedule.AddRange(scheduleReverseSequence);
+
+            _lineData = _aldebaranLineService.Get(_syncAttempts);
+            _moneyData = _aldebaranMoneyService.Get(_syncAttempts);
+            _unitMeasuredData = _aldebaranUnitMeasuredService.Get(_syncAttempts);
+            _itemData = _aldebaranItemService.Get(_syncAttempts);
+            _itembyColorData = _aldebaranItemByColorService.Get(_syncAttempts);
+            _transitOrderData = _aldebaranTransitOrderService.Get(_syncAttempts);
+            _stockData = _aldebaranStockService.Get(_syncAttempts);
+            _packagingData = _aldebaranPackagingService.Get(_syncAttempts);
+
+            foreach (var jobKey in schedule)
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                _logger.Info($"[{jobKey}] has started");
+                try
+                {
+                    Sync(jobKey);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"An exception has occurred while execution of {jobKey} | Exception: {ex}");
+                    try
+                    {
+                        if (_connectivityErrorClassifier.IsDestinationConnectivityError(ex.Message))
+                        {
+                            _automataState.RecordAttempt(0, true);
+                        }
+                    }
+                    catch { }
+                }
+                finally
+                {
+                    watch.Stop();
+                    var elapsedMs = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
+                    _logger.Info($"[{jobKey}] has finished in {elapsedMs.ToReadableString()}");
+                }
+            }
+
+            // After running all jobs, evaluate connectivity error counts to decide if we should mark DOWN
+            try
+            {
+                var totalAttempts = _automataState.GetTotalAttempts(_windowMinutes);
+                var totalErrors = _automataState.GetConnectivityErrorCount(_windowMinutes);
+                var pct = _automataState.GetConnectivityErrorPercentage(_windowMinutes);
+
+                _logger.Info($"Connectivity window {_windowMinutes}min: attempts={totalAttempts}, errors={totalErrors}, percent={pct:0.##}%");
+
+                if (totalAttempts >= _minAttempts && pct >= _percentThreshold)
+                {
+                    if (!_automataState.IsDestinationConnectivityDown)
+                    {
+                        _automataState.IsDestinationConnectivityDown = true;
+                        if (_automataState.DestinationConnectivityDownSince == null)
+                            _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
+
+                        var connections = _inventoryConnectionService.GetActive().Where(c => _automataState.GetConnectionsWithErrors().Contains(c.InventoryAutomationConnectionId)).ToList();
+                        _notificationService.NotifyConnectivityDown(connections, _automataState.DestinationConnectivityDownSince.Value);
+                    }
+                }
+
+                // Also check consecutive failures per connection
+                var activeConnections = _inventoryConnectionService.GetActive();
+                foreach (var conn in activeConnections)
+                {
+                    var cons = _automataState.GetConsecutiveFailures(conn.InventoryAutomationConnectionId);
+                    if (cons >= _consecutiveThreshold)
+                    {
+                        if (!_automataState.IsDestinationConnectivityDown)
+                        {
+                            _automataState.IsDestinationConnectivityDown = true;
+                            if (_automataState.DestinationConnectivityDownSince == null)
+                                _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
+
+                            _notificationService.NotifyConnectivityDown(new[] { conn }, _automataState.DestinationConnectivityDownSince.Value);
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error evaluating connectivity error thresholds: {ex}");
+            }
         }
         private void Sync(string key)
         {
@@ -184,49 +279,8 @@ namespace AutomataExistencias.Console.Jobs
             // Per-run we do not fully reset sliding-window counters; keep window behavior
             // but we may clear short-lived per-run structures if needed. For now keep as-is.
 
-            var scheduleSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence"].Split(';').ToList();
-            var scheduleReverseSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence.Reverse"].Split(';').ToList();
-
-            var schedule = scheduleSequence;
-            schedule.AddRange(scheduleReverseSequence);
-
-            _lineData = _aldebaranLineService.Get(_syncAttempts);
-            _moneyData = _aldebaranMoneyService.Get(_syncAttempts);
-            _unitMeasuredData = _aldebaranUnitMeasuredService.Get(_syncAttempts);
-            _itemData = _aldebaranItemService.Get(_syncAttempts);
-            _itembyColorData = _aldebaranItemByColorService.Get(_syncAttempts);
-            _transitOrderData = _aldebaranTransitOrderService.Get(_syncAttempts);
-            _stockData = _aldebaranStockService.Get(_syncAttempts);
-            _packagingData = _aldebaranPackagingService.Get(_syncAttempts);
-
-            foreach (var jobKey in schedule)
-            {
-                var watch = System.Diagnostics.Stopwatch.StartNew();
-                _logger.Info($"[{jobKey}] has started");
-                try
-                {
-                    Sync(jobKey);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error($"An exception has occurred while execution of {jobKey} | Exception: {ex.ToJson()}");
-                    // If exception contains connectivity patterns, increment counters
-                    try
-                    {
-                        if (_connectivityErrorClassifier.IsDestinationConnectivityError(ex.Message))
-                        {
-                            _automataState.RecordAttempt(0, true);
-                        }
-                    }
-                    catch { }
-                }
-                finally
-                {
-                    watch.Stop();
-                    var elapsedMs = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
-                    _logger.Info($"[{jobKey}] has finished in {elapsedMs.ToReadableString()}");
-                }
-            }
+            // Execute the normal sync sequence
+            RunOnceForced();
 
             // After running all jobs, evaluate connectivity error counts to decide if we should mark DOWN
             try

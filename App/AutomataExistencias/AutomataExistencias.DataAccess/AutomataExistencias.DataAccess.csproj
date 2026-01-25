@@ -57,6 +57,7 @@
     <Compile Include="Aldebaran\AutomataConnectivityErrorPattern.cs" />
     <Compile Include="Aldebaran\AutomataConnectivityThreshold.cs" />
     <Compile Include="Aldebaran\AutomataNotificationRecipient.cs" />
+    <Compile Include="Aldebaran\CatalogItem.cs" />
     <Compile Include="Aldebaran\Homologacion\PackagingHomologado.cs" />
     <Compile Include="Aldebaran\Homologacion\CurrencyHomologado.cs" />
     <Compile Include="Aldebaran\Homologacion\MeasureUnitHomologado.cs" />
