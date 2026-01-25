@@ -104,21 +104,21 @@ namespace AutomataExistencias.Domain.Aldebaran
             return count;
         }
 
-        public void ClearEventsForItem(int itemId)
+        public void ClearEventsForItem(int itemId, int flagAttempts)
         {
-            var items = _unitOfWork.Repository<Item>().Get(w => w.ItemId == itemId).ToList();
+            var items = _unitOfWork.Repository<Item>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<Item>().Remove(items);
 
-            var bycolors = _unitOfWork.Repository<ItemByColor>().Get(w => w.ItemId == itemId).ToList();
+            var bycolors = _unitOfWork.Repository<ItemByColor>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<ItemByColor>().Remove(bycolors);
 
-            var stocks = _unitOfWork.Repository<Stock>().Get(w => w.ItemId == itemId).ToList();
+            var stocks = _unitOfWork.Repository<Stock>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<Stock>().Remove(stocks);
 
-            var packs = _unitOfWork.Repository<Packaging>().Get(w => w.ItemId == itemId).ToList();
+            var packs = _unitOfWork.Repository<Packaging>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<Packaging>().Remove(packs);
 
-            var trans = _unitOfWork.Repository<TransitOrder>().Get(w => (w.ColorItemId.HasValue && w.ColorItemId.Value == itemId) || w.TransitOrderItemId == itemId).ToList();
+            var trans = _unitOfWork.Repository<TransitOrder>().Get(w => ((w.ColorItemId.HasValue && w.ColorItemId.Value == itemId) || w.TransitOrderItemId == itemId) && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<TransitOrder>().Remove(trans);
 
             _unitOfWork.Repository<Item>().SaveChanges();

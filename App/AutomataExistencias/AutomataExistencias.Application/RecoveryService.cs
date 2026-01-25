@@ -176,13 +176,26 @@ namespace AutomataExistencias.Application
                             return false;
                         }
 
-                        // 8) Clear events for batch
+                        // 8) Clear events for batch: only remove previously-flagged events
                         foreach (var id in batch)
                         {
-                            _recoveryDomainService.ClearEventsForItem(id);
+                            _recoveryDomainService.ClearEventsForItem(id, flagAttempts);
                         }
 
-                        processedArticles += batch.Count;
+                        // After clearing, detect items that still have pending events (failed to reprocess)
+                        var failed = batch.Where(id => _recoveryDomainService.CountPendingEvents(id, syncAttempts) > 0).ToList();
+                        if (failed.Any())
+                        {
+                            foreach (var fid in failed)
+                            {
+                                // Quarantine: mark events as flagged to avoid repeated automatic retries
+                                _recoveryDomainService.MarkEventsAsFlagged(fid, flagAttempts);
+                                _logger.Warn($"RecoveryService: item {fid} still has pending events after recovery; marked as flagged for manual investigation");
+                            }
+                            // TODO: notify via _notificationService (not implemented yet)
+                        }
+
+                        processedArticles += batch.Count - failed.Count;
                     }
 
                     _logger.Info("RecoveryService: global recovery completed for candidate set (batched)");
@@ -259,8 +272,8 @@ namespace AutomataExistencias.Application
                             continue; // skip to next article
                         }
 
-                        // 6) Clear all old events for the item
-                        _recoveryDomainService.ClearEventsForItem(artId);
+                        // 6) Clear all old events for the item (only previously-flagged)
+                        _recoveryDomainService.ClearEventsForItem(artId, flagAttempts);
                         processedArticles++;
                         _logger.Info($"RecoveryService: finished recovery for ItemId={artId}");
                     }

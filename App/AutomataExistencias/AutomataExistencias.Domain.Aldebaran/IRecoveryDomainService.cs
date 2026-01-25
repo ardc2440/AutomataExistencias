@@ -7,6 +7,6 @@ namespace AutomataExistencias.Domain.Aldebaran
         IEnumerable<int> GetCandidateItemIds(int syncAttempts);
         void MarkEventsAsFlagged(int itemId, int flagAttempts);
         int CountPendingEvents(int itemId, int syncAttempts);
-        void ClearEventsForItem(int itemId);
+        void ClearEventsForItem(int itemId, int flagAttempts);
     }
 }
