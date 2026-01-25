@@ -83,6 +83,16 @@ namespace AutomataExistencias.Domain.Aldebaran
             _unitOfWork.Repository<TransitOrder>().SaveChanges();
         }
 
+        public int CountPendingEventsForItems(System.Collections.Generic.IEnumerable<int> itemIds, int syncAttempts)
+        {
+            var count = 0;
+            foreach (var id in itemIds)
+            {
+                count += CountPendingEvents(id, syncAttempts);
+            }
+            return count;
+        }
+
         public int CountPendingEvents(int itemId, int syncAttempts)
         {
             var count = 0;

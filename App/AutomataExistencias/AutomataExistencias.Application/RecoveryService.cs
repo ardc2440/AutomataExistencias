@@ -88,6 +88,9 @@ namespace AutomataExistencias.Application
                 int.TryParse(_configurator.GetKey("Recovery.BatchSize"), out batchSize);
                 if (batchSize <= 0) batchSize = 10;
 
+                // Global mode is always enabled for recovery (massive two-phase flow over candidates)
+                var ranGlobal = false;
+
                 var flagAttempts = int.MaxValue - 1000;
                 var itemTimeoutSeconds = 0;
                 int.TryParse(_configurator.GetKey("Recovery.ItemTimeoutSeconds"), out itemTimeoutSeconds);
@@ -99,12 +102,102 @@ namespace AutomataExistencias.Application
                     _logger.Info("RecoveryService: no eligible articles to recover");
                     return false;
                 }
-
                 var toProcess = candidates.Take(batchSize).ToList();
                 var processedArticles = 0;
+                // Always run global two-phase flow over the candidate set
+                _logger.Info("RecoveryService: running global two-phase recovery on candidate set");
+                try
+                {
+                    var globalBatchSize = 0;
+                    int.TryParse(_configurator.GetKey("Recovery.GlobalBatchSize"), out globalBatchSize);
+                    if (globalBatchSize <= 0) globalBatchSize = 20; // default: 20 items per batch
 
+                    // process candidates in batches to avoid huge enqueues
+                    for (int offset = 0; offset < candidates.Count; offset += globalBatchSize)
+                    {
+                        var batch = candidates.Skip(offset).Take(globalBatchSize).ToList();
+
+                        _logger.Info($"RecoveryService: global batch processing ids [{offset}..{offset + batch.Count - 1}]");
+
+                        // 1) Mark events for this batch
+                        foreach (var id in batch)
+                        {
+                            _recoveryDomainService.MarkEventsAsFlagged(id, int.MaxValue - 1000);
+                        }
+
+                        // 2) Unpublish batch (row-by-row)
+                        foreach (var id in batch)
+                        {
+                            try { _itemsMasterService.UpdateVisibility(id, false); }
+                            catch (Exception ex) { _logger.Error($"RecoveryService: error unpublishing ItemId={id} in global batch: {ex}"); }
+                        }
+
+                        // 3) Run full sync to process deletions
+                        ExecuteSyncOnce(syncAttempts);
+
+                        // 4) Wait until pending events for this batch are processed or timeout
+                        var waited = 0;
+                        var itemTimeoutSecondsGlobal = 0;
+                        int.TryParse(_configurator.GetKey("Recovery.ItemTimeoutSeconds"), out itemTimeoutSecondsGlobal);
+                        if (itemTimeoutSecondsGlobal <= 0) itemTimeoutSecondsGlobal = 300;
+                        while (batch.Sum(id => _recoveryDomainService.CountPendingEvents(id, syncAttempts)) > 0 && waited < itemTimeoutSecondsGlobal)
+                        {
+                            System.Threading.Thread.Sleep(1000);
+                            waited++;
+                        }
+
+                        if (waited >= itemTimeoutSecondsGlobal)
+                        {
+                            _logger.Warn("RecoveryService: timeout waiting after global unpublish for batch");
+                            return false;
+                        }
+
+                        // 5) Republish batch
+                        foreach (var id in batch)
+                        {
+                            try { _itemsMasterService.UpdateVisibility(id, true); }
+                            catch (Exception ex) { _logger.Error($"RecoveryService: error republishing ItemId={id} in global batch: {ex}"); }
+                        }
+
+                        // 6) Run full sync to process insertions
+                        ExecuteSyncOnce(syncAttempts);
+
+                        // 7) Wait until pending events for this batch are processed or timeout
+                        waited = 0;
+                        while (batch.Sum(id => _recoveryDomainService.CountPendingEvents(id, syncAttempts)) > 0 && waited < itemTimeoutSecondsGlobal)
+                        {
+                            System.Threading.Thread.Sleep(1000);
+                            waited++;
+                        }
+
+                        if (waited >= itemTimeoutSecondsGlobal)
+                        {
+                            _logger.Warn("RecoveryService: timeout waiting after global publish for batch");
+                            return false;
+                        }
+
+                        // 8) Clear events for batch
+                        foreach (var id in batch)
+                        {
+                            _recoveryDomainService.ClearEventsForItem(id);
+                        }
+
+                        processedArticles += batch.Count;
+                    }
+
+                    _logger.Info("RecoveryService: global recovery completed for candidate set (batched)");
+                    ranGlobal = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"RecoveryService: global recovery failed: {ex}");
+                    return false;
+                }
+
+                // If global flow already ran, skip per-item processing
                 foreach (var artId in toProcess)
                 {
+                    if (ranGlobal) break;
                     try
                     {
                         _logger.Info($"RecoveryService: starting recovery for ItemId={artId}");
