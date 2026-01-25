@@ -1,5 +1,7 @@
 using System;
 using Autofac;
+using AutomataExistencias.Application;
+using AutomataExistencias.Console.Code;
 using NLog;
 using Quartz;
 
@@ -8,23 +10,34 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class RecoveryJob : IJob
     {
-        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
+        private readonly IRecoveryService _recoveryService;
+        private readonly Logger _logger;
+
+        public RecoveryJob()
+        {
+            var container = AutofacConfigurator.GetContainer();
+            _recoveryService = container.Resolve<IRecoveryService>();
+            _logger = LogManager.GetCurrentClassLogger();
+        }
 
         public void Execute(IJobExecutionContext context)
         {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            _logger.Info("[RecoveryJob] has started");
             try
             {
-                var container = AutomataExistencias.Console.Code.AutofacConfigurator.GetContainer();
-                var recovery = container.Resolve<AutomataExistencias.Application.IRecoveryService>();
-                var ok = recovery.TryRecoverOnce();
-                if (ok)
-                    _logger.Info("RecoveryJob: recovery completed successfully.");
-                else
-                    _logger.Warn("RecoveryJob: recovery did not complete.");
+                var ok = _recoveryService.TryRecoverOnce();
+                _logger.Info($"[RecoveryJob] finished. Success={ok}");
             }
             catch (Exception ex)
             {
-                _logger.Error($"RecoveryJob error: {ex}");
+                _logger.Error($"An exception has occurred while execution of RecoveryJob | Exception: {ex}");
+            }
+            finally
+            {
+                watch.Stop();
+                var elapsedMs = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
+                _logger.Info($"[RecoveryJob] has finished in {elapsedMs}");
             }
         }
     }
