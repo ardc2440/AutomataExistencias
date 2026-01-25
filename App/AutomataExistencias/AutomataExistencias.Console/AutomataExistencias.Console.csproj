@@ -118,6 +118,7 @@
     <Compile Include="Code\AutofacConfigurator.cs" />
     <Compile Include="Code\CatapromApplicationEnvironment.cs" />
     <Compile Include="Jobs\CleanerJob.cs" />
+    <Compile Include="Jobs\RecoveryJob.cs" />
     <Compile Include="Jobs\SyncJob.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -19,6 +19,7 @@ namespace AutomataExistencias.Application
         private readonly AutomataExistencias.Application.INotificationService _notificationService;
         private readonly AutomataExistencias.Core.Configuration.IConfigurator _configurator;
         private readonly Logger _logger;
+        private readonly IRecoveryService _recoveryService;
 
         private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
 
@@ -26,7 +27,8 @@ namespace AutomataExistencias.Application
             ITransitOrderService transitOrderService, IItemByColorService itemByColorService,
             IConnectivityErrorClassifier connectivityErrorClassifier, AutomataExistencias.Core.IAutomataState automataState,
             INotificationService notificationService, AutomataExistencias.Core.Configuration.IConfigurator configurator,
-            Domain.Aldebaran.IInventoryAutomationConnectionService inventoryConnectionService)
+            Domain.Aldebaran.IInventoryAutomationConnectionService inventoryConnectionService,
+            IRecoveryService recoveryService)
         {
             _itemService = itemService;
             _stockService = stockService;
@@ -38,6 +40,7 @@ namespace AutomataExistencias.Application
             _notificationService = notificationService;
             _configurator = configurator;
             _inventoryConnectionService = inventoryConnectionService;
+            _recoveryService = recoveryService;
             _logger = LogManager.GetCurrentClassLogger();
         }
 
@@ -86,9 +89,7 @@ namespace AutomataExistencias.Application
             try
             {
                 _logger.Info("StartupRecoveryChecker: triggering notification for startup recovery");
-                var connections = _inventoryConnectionService.GetActive();
-                _notificationService.NotifyConnectivityDown(connections, DateTime.UtcNow);
-                return false; // we didn't perform full recovery
+                return _recoveryService.TryRecoverOnce();
             }
             catch (Exception ex)
             {
