@@ -65,7 +65,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<AutomataExistencias.Application.RecoveryService>().As<AutomataExistencias.Application.IRecoveryService>();
             
             /* Notification service */
-            builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>();
+            builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>().SingleInstance();
 
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemsHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemsHomologadosService>();
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemReferencesHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService>();
@@ -90,6 +90,7 @@ namespace AutomataExistencias.Console.Code
 
             /*Jobs*/
             builder.RegisterType<JobSchedulerFactory>().As<IJobSchedulerFactory>();
+            builder.RegisterType<NonConnectivityErrorsJob>().AsSelf();
             builder.RegisterType<SyncJob>().AsSelf();
 
             builder.RegisterModule(module);

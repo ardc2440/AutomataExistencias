@@ -7,69 +7,28 @@ namespace AutomataExistencias.Application
 {
     public class RecoveryService : IRecoveryService
     {
-        private readonly Domain.Aldebaran.IItemService _itemService;
-        private readonly Domain.Aldebaran.IStockService _stockService;
-        private readonly Domain.Aldebaran.IPackagingService _packagingService;
-        private readonly Domain.Aldebaran.ITransitOrderService _transitOrderService;
-        private readonly Domain.Aldebaran.IItemByColorService _itemByColorService;
-        private readonly IItemSynchronize _itemSynchronize;
-        private readonly IStockSynchronize _stockSynchronize;
-        private readonly IPackagingSynchronize _packagingSynchronize;
-        private readonly ITransitOrderSynchronize _transitOrderSynchronize;
-        private readonly IItemByColorSynchronize _itemByColorSynchronize;
-        private readonly IMoneySynchronize _moneySynchronize;
-        private readonly IUnitMeasuredSynchronize _unitMeasuredSynchronize;
-        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.INotificationService _notificationService;
-        private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
+        // Only keep injected dependencies that are actually used by the recovery logic
         private readonly Domain.Aldebaran.IItemsMasterService _itemsMasterService;
         private readonly Domain.Aldebaran.IRecoveryDomainService _recoveryDomainService;
         private readonly AutomataExistencias.Core.Configuration.IConfigurator _configurator;
         private readonly ISyncOrchestrator _syncOrchestrator;
+        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly AutomataExistencias.Application.INotificationService _notificationService;
         private readonly Logger _logger;
 
-        public RecoveryService(Domain.Aldebaran.IItemService itemService,
-            Domain.Aldebaran.IStockService stockService,
-            Domain.Aldebaran.IPackagingService packagingService,
-            Domain.Aldebaran.ITransitOrderService transitOrderService,
-            Domain.Aldebaran.IItemByColorService itemByColorService,
-            IItemSynchronize itemSynchronize,
-            IStockSynchronize stockSynchronize,
-            IPackagingSynchronize packagingSynchronize,
-            ITransitOrderSynchronize transitOrderSynchronize,
-            IItemByColorSynchronize itemByColorSynchronize,
-            IMoneySynchronize moneySynchronize,
-            IUnitMeasuredSynchronize unitMeasuredSynchronize,
-            IConnectivityErrorClassifier connectivityErrorClassifier,
-            AutomataExistencias.Core.IAutomataState automataState,
-            INotificationService notificationService,
-            Domain.Aldebaran.IInventoryAutomationConnectionService inventoryConnectionService,
-            Domain.Aldebaran.IItemsMasterService itemsMasterService,
+        public RecoveryService(Domain.Aldebaran.IItemsMasterService itemsMasterService,
             Domain.Aldebaran.IRecoveryDomainService recoveryDomainService,
             ISyncOrchestrator syncOrchestrator,
-            AutomataExistencias.Core.Configuration.IConfigurator configurator)
+            AutomataExistencias.Core.Configuration.IConfigurator configurator,
+            AutomataExistencias.Core.IAutomataState automataState,
+            AutomataExistencias.Application.INotificationService notificationService)
         {
-            _itemService = itemService;
-            _stockService = stockService;
-            _packagingService = packagingService;
-            _transitOrderService = transitOrderService;
-            _itemByColorService = itemByColorService;
-            _itemSynchronize = itemSynchronize;
-            _stockSynchronize = stockSynchronize;
-            _packagingSynchronize = packagingSynchronize;
-            _transitOrderSynchronize = transitOrderSynchronize;
-            _itemByColorSynchronize = itemByColorSynchronize;
-            _moneySynchronize = moneySynchronize;
-            _unitMeasuredSynchronize = unitMeasuredSynchronize;
-            _connectivityErrorClassifier = connectivityErrorClassifier;
-            _automataState = automataState;
-            _notificationService = notificationService;
-            _inventoryConnectionService = inventoryConnectionService;
             _itemsMasterService = itemsMasterService;
             _recoveryDomainService = recoveryDomainService;
             _syncOrchestrator = syncOrchestrator;
             _configurator = configurator;
+            _automataState = automataState;
+            _notificationService = notificationService;
             _logger = LogManager.GetCurrentClassLogger();
         }
 

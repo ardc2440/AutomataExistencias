@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Mail;
 using AutomataExistencias.DataAccess.Aldebaran;
 using AutomataExistencias.Domain.Aldebaran;
-using AutomataExistencias.Core.Extensions;
 using NLog;
 
 namespace AutomataExistencias.Application
@@ -21,26 +20,34 @@ namespace AutomataExistencias.Application
             _logger = LogManager.GetCurrentClassLogger();
         }
 
-        public void NotifyConnectivityDown(IEnumerable<InventoryAutomationConnection> connections, DateTime since)
+        public void NotifyConnectivityDown(IEnumerable<InventoryAutomationConnection> connections, DateTime since, IEnumerable<Item> failedItems = null, int consecutiveFailures = 0)
         {
             try
             {
-                var recipients = _recipientService.GetActiveByType("CONNECTIVITY_DOWN").Select(s => s.Email).ToList();
+                var recipients = _recipientService.GetActiveByType("CONNECTIVITY").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
                 if (!recipients.Any())
                 {
-                    _logger.Warn("No recipients configured for CONNECTIVITY_DOWN");
+                    _logger.Warn("NotifyConnectivityDown: no recipients configured for CONNECTIVITY");
                     return;
                 }
 
-                var subject = "AutomataExistencias - Connectivity DOWN";
-                var body = $"Detected connectivity failure since {since:u}. Affected connections:\n" +
-                           string.Join("\n", connections.Select(c => $"ConnId={c.InventoryAutomationConnectionId}, Server={c.ServerName}, Database={c.DatabaseName}"));
+                var subject = "[Automata] Connectivity DOWN" + (consecutiveFailures > 0 ? $" - Attempts={consecutiveFailures}" : string.Empty);
 
-                SendEmail(recipients, subject, body);
+                var body = $"Connectivity to destinations marked DOWN since {since:u}.\r\n\r\nDestinations:\r\n" +
+                           string.Join("\r\n", connections.Select(c => $"- {c.ServerName} - {c.DatabaseName} (Id={c.InventoryAutomationConnectionId})"));
+
+                if (failedItems != null && failedItems.Any())
+                {
+                    body += "\r\n\r\nItems with connectivity failures:\r\n" +
+                            string.Join("\r\n", failedItems.Select(i => $"- {i.Name} (Ref={i.Reference})"));
+                }
+
+                // fire-and-forget async send; errors are logged inside SendEmailAsync
+                _ = SendEmailAsync(recipients, subject, body);
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error sending connectivity down notification: {ex.ToJson()}");
+                _logger.Warn($"NotifyConnectivityDown failed: {ex}");
             }
         }
 
@@ -48,55 +55,101 @@ namespace AutomataExistencias.Application
         {
             try
             {
-                var recipients = _recipientService.GetActiveByType("CONNECTIVITY_RECOVERED").Select(s => s.Email).ToList();
+                var recipients = _recipientService.GetActiveByType("CONNECTIVITY").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
                 if (!recipients.Any())
                 {
-                    _logger.Warn("No recipients configured for CONNECTIVITY_RECOVERED");
+                    _logger.Warn("NotifyConnectivityRecovered: no recipients configured for CONNECTIVITY");
                     return;
                 }
 
-                var subject = "AutomataExistencias - Connectivity RECOVERED";
-                var body = $"Connectivity recovered. Period: {since:u} - {until:u}. Items recovered: {itemsRecovered}.";
-
-                SendEmail(recipients, subject, body);
+                var subject = "[Automata] Connectivity RECOVERED";
+                var body = $"Connectivity recovered. Items recovered: {itemsRecovered}.\r\nSince: {since:u}\r\nUntil: {until:u}";
+                _ = SendEmailAsync(recipients, subject, body);
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error sending connectivity recovered notification: {ex.ToJson()}");
+                _logger.Warn($"NotifyConnectivityRecovered failed: {ex}");
             }
         }
 
-        private void SendEmail(IEnumerable<string> to, string subject, string body)
+        public void NotifyNonConnectivityErrors(IEnumerable<Item> items, DateTime since)
         {
             try
             {
-                var smtpHost = System.Configuration.ConfigurationManager.AppSettings["Smtp.Host"];
-                var smtpPort = Convert.ToInt32(System.Configuration.ConfigurationManager.AppSettings["Smtp.Port"] ?? "25");
-                var smtpUser = System.Configuration.ConfigurationManager.AppSettings["Smtp.User"];
-                var smtpPass = System.Configuration.ConfigurationManager.AppSettings["Smtp.Password"];
-                var from = System.Configuration.ConfigurationManager.AppSettings["Smtp.From"] ?? "no-reply@automata.example.com";
-
-                using (var client = new SmtpClient(smtpHost, smtpPort))
+                var recipients = _recipientService.GetActiveByType("GENERAL").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
+                if (!recipients.Any())
                 {
-                    if (!string.IsNullOrEmpty(smtpUser))
+                    _logger.Warn("NotifyNonConnectivityErrors: no recipients configured for GENERAL");
+                    return;
+                }
+
+                var subject = "[Automata] Items with non-connectivity sync errors";
+                var body = $"Non-connectivity errors detected since {since:u}.\r\n\r\nItems:\r\n" +
+                           string.Join("\r\n", items.Select(i => $"- {i.Name} (Ref={i.Reference})"));
+                _ = SendEmailAsync(recipients, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"NotifyNonConnectivityErrors failed: {ex}");
+            }
+        }
+
+        private async System.Threading.Tasks.Task SendEmailAsync(IEnumerable<string> to, string subject, string body)
+        {
+            try
+            {
+                // Prefer explicit appSettings keys; fallback to legacy JSON if not present
+                var app = System.Configuration.ConfigurationManager.AppSettings;
+                var server = app["Mail.Server"];
+                var portStr = app["Mail.Port"];
+                var fromEmail = app["Mail.SenderEmail"];
+                var fromName = app["Mail.SenderName"];
+                var password = app["Mail.Password"];
+                var secure = app["Mail.SecureSocketOption"];
+
+                // Require explicit appSettings keys
+                if (string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(fromEmail))
+                {
+                    _logger.Error("Mail configuration missing: ensure Mail.Server and Mail.SenderEmail are set in App.config");
+                    return;
+                }
+
+                int port = 25;
+                int.TryParse(portStr, out port);
+
+                using (var message = new MailMessage())
+                {
+                    message.From = new MailAddress((string)fromEmail, (string)fromName);
+                    foreach (var addr in to.Where(t => !string.IsNullOrWhiteSpace(t)))
+                        message.To.Add(addr);
+                    message.Subject = subject;
+                    message.Body = body;
+
+                    using (var client = new SmtpClient((string)server, port))
                     {
-                        client.Credentials = new NetworkCredential(smtpUser, smtpPass);
+                        client.UseDefaultCredentials = false;
+                        if (!string.IsNullOrWhiteSpace((string)password))
+                        {
+                            client.Credentials = new NetworkCredential((string)fromEmail, (string)password);
+                        }
+                        var ssl = (secure ?? string.Empty).ToUpperInvariant();
+                        client.EnableSsl = ssl == "SSL" || ssl == "STARTTLS";
+
+                        try
+                        {
+                            await client.SendMailAsync(message).ConfigureAwait(false);
+                            _logger.Info($"Email sent: Subject='{subject}' To={string.Join(", ", to)}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error($"SendEmailAsync failed sending Subject='{subject}' To={string.Join(", ", to)} | Exception: {ex}");
+                        }
                     }
-                    client.EnableSsl = Convert.ToBoolean(System.Configuration.ConfigurationManager.AppSettings["Smtp.EnableSsl"] ?? "false");
-
-                    var mail = new MailMessage();
-                    mail.From = new MailAddress(from);
-                    foreach (var address in to.Distinct())
-                        mail.To.Add(address);
-                    mail.Subject = subject;
-                    mail.Body = body;
-
-                    client.Send(mail);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error sending email: {ex.ToJson()}");
+                _logger.Error($"SendEmailAsync fatal error preparing message Subject='{subject}': {ex}");
             }
         }
     }

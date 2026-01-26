@@ -55,9 +55,12 @@ namespace AutomataExistencias.Console.Schedules
             var factoryInstance = schedFact.GetScheduler();
             factoryInstance.Start();
             factoryInstance.ScheduleJob(syncJobTuple.Item1, syncJobTuple.Item2);
-            // Schedule RecoveryJob every 5 minutes
+            // Schedule RecoveryJob every configured interval
             var recoveryTuple = SetSchedule<RecoveryJob>("Recovery.Interval");
             factoryInstance.ScheduleJob(recoveryTuple.Item1, recoveryTuple.Item2);
+            // Schedule NonConnectivityErrorsJob every configured interval (default 30 minutes)
+            var nonConnTuple = SetSchedule<NonConnectivityErrorsJob>("Notification.NonConnectivityInterval");
+            factoryInstance.ScheduleJob(nonConnTuple.Item1, nonConnTuple.Item2);
             if (bool.Parse(_configurator.GetKey("Schedule.Cleaner.Active")))
             {
                 var cleanerJobTuple = SetDailySchedule<CleanerJob>("Schedule.Cleaner");
