@@ -17,7 +17,6 @@ namespace AutomataExistencias.Console.Jobs
         private readonly AutomataExistencias.Core.IAutomataState _automataState;
         private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
         private readonly AutomataExistencias.Application.INotificationService _notificationService;
-        private readonly Domain.Aldebaran.IAutomataConnectivityThresholdService _thresholdService;
         private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
         /*ItemByColor*/
         private readonly IItemByColorSynchronize _itemByColorSynchronize;
@@ -95,7 +94,6 @@ namespace AutomataExistencias.Console.Jobs
             _automataState = container.Resolve<AutomataExistencias.Core.IAutomataState>();
             _connectivityErrorClassifier = container.Resolve<AutomataExistencias.Application.IConnectivityErrorClassifier>();
             _notificationService = container.Resolve<AutomataExistencias.Application.INotificationService>();
-            _thresholdService = container.Resolve<Domain.Aldebaran.IAutomataConnectivityThresholdService>();
             _inventoryConnectionService = container.Resolve<Domain.Aldebaran.IInventoryAutomationConnectionService>();
             /*Others*/
             var configurator = container.Resolve<IConfigurator>();

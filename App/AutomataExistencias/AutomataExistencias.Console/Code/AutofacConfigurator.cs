@@ -55,7 +55,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.InventoryAutomationConnectionService>().As<Domain.Aldebaran.IInventoryAutomationConnectionService>();
             builder.RegisterType<Domain.Aldebaran.AutomataNotificationRecipientService>().As<Domain.Aldebaran.IAutomataNotificationRecipientService>();
             builder.RegisterType<Domain.Aldebaran.AutomataConnectivityPatternService>().As<Domain.Aldebaran.IAutomataConnectivityPatternService>();
-            builder.RegisterType<Domain.Aldebaran.AutomataConnectivityThresholdService>().As<Domain.Aldebaran.IAutomataConnectivityThresholdService>();
+            // AutomataConnectivityThresholdService removed - thresholds are handled by global configuration
             // Automata state (shared in-memory state)
             builder.RegisterType<AutomataExistencias.Core.AutomataState>().As<AutomataExistencias.Core.IAutomataState>().SingleInstance();
             
