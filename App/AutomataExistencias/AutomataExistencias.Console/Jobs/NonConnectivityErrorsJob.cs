@@ -45,23 +45,83 @@ namespace AutomataExistencias.Console.Jobs
 
                 var since = DateTime.UtcNow.Subtract(interval);
 
-                var candidates = _itemService.Get().Where(i => i.Attempts >= syncAttempts).ToList();
-                var nonConnectivity = candidates.Where(i =>
+                var candidates = _itemService.Get().Where(i => i.Attempts > 0).ToList();
+
+                // Use connectivity window minutes to decide whether a recent connectivity error
+                // should be treated as pending connectivity or classified as business (older than window)
+                int windowMinutes;
+                if (!int.TryParse(_configurator.GetKey("ConnectivityError.WindowMinutes"), out windowMinutes) || windowMinutes <= 0)
+                    windowMinutes = 15;
+
+                var nonConnectivity = new System.Collections.Generic.List<string>();
+                var pendingConnectivity = new System.Collections.Generic.List<string>();
+
+                foreach (var i in candidates)
                 {
                     try
                     {
-                        return !_connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception);
-                    }
-                    catch
-                    {
-                        return true;
-                    }
-                }).ToList();
+                        var isConn = false;
+                        try { isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(i.Exception); } catch { isConn = false; }
 
-                if (nonConnectivity.Any())
+                        // Attempt to get date (FECHA_INTEGRA or Date or Fecha). If not available, treat as old.
+                        DateTime? dt = null;
+                        try
+                        {
+                            var prop = i.GetType().GetProperty("FECHA_INTEGRA") ?? i.GetType().GetProperty("Date") ?? i.GetType().GetProperty("Fecha");
+                            if (prop != null)
+                            {
+                                var v = prop.GetValue(i);
+                                if (v is DateTime d) dt = d.ToUniversalTime();
+                                else if (DateTime.TryParse(v?.ToString(), out var pd)) dt = pd.ToUniversalTime();
+                            }
+                        }
+                        catch { dt = null; }
+
+                        var now = DateTime.UtcNow;
+                        var safeException = (i.Exception ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ');
+                        var desc = $"Id={i.Id} | Attempts={i.Attempts} | Err={safeException}";
+
+                        if (!isConn)
+                        {
+                            nonConnectivity.Add(desc);
+                        }
+                        else
+                        {
+                            // If FECHA_INTEGRA older than connectivity window => treat as business (nonConnectivity)
+                            bool olderThanWindow = dt.HasValue && (now - dt.Value).TotalMinutes > windowMinutes;
+                            // If no date available, treat as old (safer path)
+                            bool olderThan10Min = olderThanWindow || !dt.HasValue;
+                            if (olderThan10Min)
+                            {
+                                nonConnectivity.Add(desc);
+                            }
+                            else
+                            {
+                                // Recent (<=10 min) -> pendingConnectivity if attempts >= syncAttempts or older than recovery timeout
+                                if (i.Attempts >= syncAttempts)
+                                {
+                                    pendingConnectivity.Add(desc);
+                                }
+                                else
+                                {
+                                    var recoveryTimeout = _configurator.GetKey("Recovery.ItemTimeoutSeconds").ToInt();
+                                    bool olderThanRecovery = dt.HasValue && (now - dt.Value).TotalSeconds > recoveryTimeout;
+                                    if (olderThanRecovery)
+                                        pendingConnectivity.Add(desc);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn($"Error processing item in NonConnectivityErrorsJob: {ex}");
+                    }
+                }
+
+                if (nonConnectivity.Any() || pendingConnectivity.Any())
                 {
-                    _logger.Info($"[NonConnectivityErrorsJob] Found {nonConnectivity.Count} non-connectivity items with attempts >= {syncAttempts}");
-                    _notificationService.NotifyNonConnectivityErrors(nonConnectivity, since);
+                    _logger.Info($"[NonConnectivityErrorsJob] Found nonConnectivity={nonConnectivity.Count} pendingConnectivity={pendingConnectivity.Count}");
+                    _notificationService.NotifyPendingAndNonConnectivityErrors(nonConnectivity, pendingConnectivity, since);
                 }
                 else
                 {

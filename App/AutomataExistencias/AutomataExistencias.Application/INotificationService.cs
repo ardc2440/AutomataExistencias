@@ -12,9 +12,10 @@ namespace AutomataExistencias.Application
 
         // Notify that connectivity has been recovered and how many items were processed
         void NotifyConnectivityRecovered(int itemsRecovered, DateTime since, DateTime until);
-
-        // Informational notification about events in R* tables that reached attempts >= syncAttempts
-        // but are NOT classified as connectivity errors. Items must include name and internal reference.
-        void NotifyNonConnectivityErrors(IEnumerable<AutomataExistencias.DataAccess.Aldebaran.Item> items, DateTime since);
+                
+        // Notify both non-connectivity (business) errors and pending connectivity errors.
+        // nonConnectivityDescriptions: formatted descriptions for business errors.
+        // pendingConnectivityDescriptions: formatted descriptions for connectivity-pending items.
+        void NotifyPendingAndNonConnectivityErrors(IEnumerable<string> nonConnectivityDescriptions, IEnumerable<string> pendingConnectivityDescriptions, DateTime since);
     }
 }

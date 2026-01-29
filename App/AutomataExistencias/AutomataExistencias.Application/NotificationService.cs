@@ -71,26 +71,44 @@ namespace AutomataExistencias.Application
                 _logger.Warn($"NotifyConnectivityRecovered failed: {ex}");
             }
         }
-
-        public void NotifyNonConnectivityErrors(IEnumerable<Item> items, DateTime since)
+                       
+        // New: notify both non-connectivity (business) errors and pending connectivity errors
+        public void NotifyPendingAndNonConnectivityErrors(IEnumerable<string> nonConnectivityDescriptions, IEnumerable<string> pendingConnectivityDescriptions, DateTime since)
         {
             try
             {
                 var recipients = _recipientService.GetActiveByType("GENERAL").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
                 if (!recipients.Any())
                 {
-                    _logger.Warn("NotifyNonConnectivityErrors: no recipients configured for GENERAL");
+                    _logger.Warn("NotifyPendingAndNonConnectivityErrors: no recipients configured for GENERAL");
                     return;
                 }
 
-                var subject = "[Automata] Items with non-connectivity sync errors";
-                var body = $"Non-connectivity errors detected since {since:u}.\r\n\r\nItems:\r\n" +
-                           string.Join("\r\n", items.Select(i => $"- {i.Name} (Ref={i.Reference})"));
+                var subject = "[Automata] Pending sync errors (business and connectivity)";
+
+                var body = $"Pending sync errors detected since {since:u}.\r\n\r\n";
+
+                if (nonConnectivityDescriptions != null && nonConnectivityDescriptions.Any())
+                {
+                    body += "Non-connectivity (business) errors:\r\n";
+                    body += string.Join("\r\n", nonConnectivityDescriptions);
+                    body += "\r\n\r\n";
+                }
+
+                if (pendingConnectivityDescriptions != null && pendingConnectivityDescriptions.Any())
+                {
+                    body += "Pending connectivity errors (require manual attention or recovery):\r\n";
+                    body += string.Join("\r\n", pendingConnectivityDescriptions);
+                    body += "\r\n\r\n";
+                }
+
+                body += "Note: items listed above may still be retried automatically depending on SyncAttempts and Recovery configuration.";
+
                 _ = SendEmailAsync(recipients, subject, body);
             }
             catch (Exception ex)
             {
-                _logger.Warn($"NotifyNonConnectivityErrors failed: {ex}");
+                _logger.Warn($"NotifyPendingAndNonConnectivityErrors failed: {ex}");
             }
         }
 
