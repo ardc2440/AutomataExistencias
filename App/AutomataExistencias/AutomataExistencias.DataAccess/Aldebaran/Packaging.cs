@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AutomataExistencias.DataAccess.Aldebaran
@@ -39,5 +40,9 @@ namespace AutomataExistencias.DataAccess.Aldebaran
 
         [Column("ERROR")]
         public string Exception { get; set; }
+
+        [Column("FECHA_INTEGRA")]
+        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+        public DateTime IntegrationDate { get; private set; }
     }
 }

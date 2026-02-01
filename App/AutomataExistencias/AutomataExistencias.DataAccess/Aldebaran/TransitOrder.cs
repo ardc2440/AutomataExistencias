@@ -37,5 +37,9 @@ namespace AutomataExistencias.DataAccess.Aldebaran
 
         [Column("ERROR")]
         public string Exception { get; set; }
+
+        [Column("FECHA_INTEGRA")]
+        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+        public DateTime IntegrationDate { get; private set; }
     }
 }

@@ -12,12 +12,19 @@ namespace AutomataExistencias.Console.Code
 {
     internal static class AutofacConfigurator
     {
+        private static readonly object _syncRoot = new object();
+        private static IContainer _container;
+
         public static IContainer GetContainer()
         {
-            var config = new ConfigurationBuilder();
-            var module = new ConfigurationModule(config.Build());
-            var builder = new ContainerBuilder();
-            builder.RegisterType<ApplicationConfigurator>().As<IConfigurator>();
+            if (_container != null) return _container;
+            lock (_syncRoot)
+            {
+                if (_container != null) return _container;
+                var config = new ConfigurationBuilder();
+                var module = new ConfigurationModule(config.Build());
+                var builder = new ContainerBuilder();
+                builder.RegisterType<ApplicationConfigurator>().As<IConfigurator>();
 
             /*Context*/
             builder.RegisterType<AldebaranBaseContext>().InstancePerDependency();
@@ -98,8 +105,10 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<NonConnectivityErrorsJob>().AsSelf();
             builder.RegisterType<SyncJob>().AsSelf();
 
-            builder.RegisterModule(module);
-            return builder.Build();
+                builder.RegisterModule(module);
+                _container = builder.Build();
+                return _container;
+            }
         }
    }
 }

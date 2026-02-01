@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using AutomataExistencias.DataAccess.Aldebaran;
+using AutomataExistencias.DataAccess.Aldebaran.Homologacion;
 using AutomataExistencias.DataAccess.Core.Contract;
 
 namespace AutomataExistencias.Domain.Aldebaran
@@ -16,7 +17,7 @@ namespace AutomataExistencias.Domain.Aldebaran
 
         public IEnumerable<int> GetCandidateItemIds(int syncAttempts)
         {
-            var set = new HashSet<int>();
+            var set = new System.Collections.Generic.HashSet<int>();
 
             var items = _unitOfWork.Repository<Item>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ItemId);
             foreach (var id in items) if (id > 0) set.Add(id);
@@ -36,7 +37,29 @@ namespace AutomataExistencias.Domain.Aldebaran
             var trans = _unitOfWork.Repository<TransitOrder>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ColorItemId);
             foreach (var id in trans) if (id.HasValue && id.Value > 0) set.Add(id.Value);
 
-            return set.ToList();
+            // Bulk homologation mapping: if any candidate is actually a homologated id (ItemIdHomologado),
+            // map it to the Aldebaran ItemId (ItemHomologado.ItemId). This returns source ids ready for UpdateVisibility.
+            var candidates = set.ToList();
+            if (!candidates.Any()) return candidates;
+
+            try
+            {
+                var homologs = _unitOfWork.Repository<ItemHomologado>().Get(h => candidates.Contains(h.ItemIdHomologado)).ToList();
+                if (homologs != null && homologs.Any())
+                {
+                    var map = homologs.ToDictionary(h => h.ItemIdHomologado, h => h.ItemId);
+                    var resultSet = new System.Collections.Generic.HashSet<int>();
+                    foreach (var id in candidates)
+                    {
+                        if (map.TryGetValue(id, out var src)) resultSet.Add(src);
+                        else resultSet.Add(id);
+                    }
+                    return resultSet.ToList();
+                }
+            }
+            catch { }
+
+            return candidates;
         }
 
         public void MarkEventsAsFlagged(int itemId, int flagAttempts)
