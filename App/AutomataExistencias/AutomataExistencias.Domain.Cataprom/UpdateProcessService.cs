@@ -2,17 +2,14 @@
 using System.Data.SqlClient;
 using AutomataExistencias.Core.Configuration;
 using AutomataExistencias.Core.Extensions;
-using AutomataExistencias.DataAccess.Core.Contract;
 using NLog;
 
 namespace AutomataExistencias.Domain.Cataprom
 {
     public class UpdateProcessService : IUpdateProcessService
     {
-        public UpdateProcessService(IUnitOfWorkCataprom unitOfWork,
-            ICatapromApplicationEnvironment applicationEnvironment)
+        public UpdateProcessService(ICatapromApplicationEnvironment applicationEnvironment)
         {
-            _unitOfWork = unitOfWork;
             _logger = LogManager.GetCurrentClassLogger();
             _connectionString = applicationEnvironment.GetConnectionString();
         }
@@ -45,7 +42,6 @@ namespace AutomataExistencias.Domain.Cataprom
         #region Properties
 
         private readonly Logger _logger;
-        private readonly IUnitOfWorkCataprom _unitOfWork;
         private readonly string _connectionString;
 
         #endregion

@@ -33,7 +33,7 @@ namespace AutomataExistencias.DataAccess.Core
         public CatapromBaseContext(string connectionString)
             : base(new SqlConnection(connectionString), true)
         {
-            Database.SetInitializer<CatapromBaseContext>(new CatapromBaseContextInitializer());
+            Database.SetInitializer(new CatapromBaseContextInitializer());
         }
 
         #endregion

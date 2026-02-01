@@ -21,7 +21,8 @@ namespace AutomataExistencias.Console.Code
 
             /*Context*/
             builder.RegisterType<AldebaranBaseContext>().InstancePerDependency();
-            builder.RegisterType<CatapromBaseContext>().InstancePerDependency();
+            // CatapromBaseContext is created per-destination inside CatapromDestinationRunner using connection strings
+            // do not register CatapromBaseContext here to avoid resolving it without a destination connection.
 
             /*Environments*/
             builder.RegisterType<AldebaranApplicationEnvironment>().As<IAldebaranApplicationEnvironment>();
@@ -29,7 +30,8 @@ namespace AutomataExistencias.Console.Code
 
             /*UnitOfWork*/
             builder.RegisterType<UnitOfWorkAldebaran>().As<IUnitOfWorkAldebaran>().InstancePerDependency();
-            builder.RegisterType<UnitOfWorkCataprom>().As<IUnitOfWorkCataprom>().InstancePerDependency();
+            // UnitOfWorkCataprom is constructed manually per-destination inside CatapromDestinationRunner
+            // so do not register a global IUnitOfWorkCataprom implementation here.
 
             /*Cataprom*/
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();
@@ -53,19 +55,22 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<Domain.Aldebaran.PackagingService>().As<Domain.Aldebaran.IPackagingService>();
             builder.RegisterType<Domain.Aldebaran.CleanService>().As<Domain.Aldebaran.ICleanService>();
             builder.RegisterType<Domain.Aldebaran.InventoryAutomationConnectionService>().As<Domain.Aldebaran.IInventoryAutomationConnectionService>();
+            builder.RegisterType<Domain.Aldebaran.ItemsMasterService>().As<Domain.Aldebaran.IItemsMasterService>();
+            builder.RegisterType<Domain.Aldebaran.RecoveryDomainService>().As<Domain.Aldebaran.IRecoveryDomainService>();
             builder.RegisterType<Domain.Aldebaran.AutomataNotificationRecipientService>().As<Domain.Aldebaran.IAutomataNotificationRecipientService>();
             builder.RegisterType<Domain.Aldebaran.AutomataConnectivityPatternService>().As<Domain.Aldebaran.IAutomataConnectivityPatternService>();
             // AutomataConnectivityThresholdService removed - thresholds are handled by global configuration
             // Automata state (shared in-memory state)
-            builder.RegisterType<AutomataExistencias.Core.AutomataState>().As<AutomataExistencias.Core.IAutomataState>().SingleInstance();
+            builder.RegisterType<Core.AutomataState>().As<Core.IAutomataState>().SingleInstance();
             
             /* Connectivity classifier */
-            builder.RegisterType<AutomataExistencias.Application.ConnectivityErrorClassifier>().As<AutomataExistencias.Application.IConnectivityErrorClassifier>().SingleInstance();
-            builder.RegisterType<AutomataExistencias.Application.StartupRecoveryChecker>().As<AutomataExistencias.Application.IStartupRecoveryChecker>();
-            builder.RegisterType<AutomataExistencias.Application.RecoveryService>().As<AutomataExistencias.Application.IRecoveryService>();
+            builder.RegisterType<ConnectivityErrorClassifier>().As<IConnectivityErrorClassifier>().SingleInstance();
+            builder.RegisterType<StartupRecoveryChecker>().As<IStartupRecoveryChecker>();
+            builder.RegisterType<RecoveryService>().As<IRecoveryService>();
             
             /* Notification service */
-            builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>().SingleInstance();
+            builder.RegisterType<NotificationService>().As<INotificationService>().SingleInstance();
+
 
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemsHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemsHomologadosService>();
             builder.RegisterType<Domain.Aldebaran.Homologacion.ItemReferencesHomologadosService>().As<Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService>();
@@ -86,7 +91,7 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<TransitOrderSynchronize>().As<ITransitOrderSynchronize>();
             builder.RegisterType<UnitMeasuredSynchronize>().As<IUnitMeasuredSynchronize>();
             // Sync orchestrator service used by Recovery to trigger immediate processing
-            builder.RegisterType<AutomataExistencias.Application.SyncOrchestratorService>().As<AutomataExistencias.Application.ISyncOrchestrator>().SingleInstance();
+            builder.RegisterType<SyncOrchestratorService>().As<ISyncOrchestrator>().SingleInstance();
 
             /*Jobs*/
             builder.RegisterType<JobSchedulerFactory>().As<IJobSchedulerFactory>();

@@ -14,10 +14,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
+        public ItemByColorSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.IItemByColorService aldebaranItemByColorService, ICatapromDestinationRunner catapromDestinationRunner, Core.IAutomataState automataState, IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranItemByColorService = aldebaranItemByColorService;
@@ -82,7 +82,8 @@ namespace AutomataExistencias.Application
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update an ItemByColor from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         try
                         {
-                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception);
+                            var exText = ex.ToString();
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(exText);
                             _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }

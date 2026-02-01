@@ -14,9 +14,9 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class SyncJob : IJob
     {
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
-        private readonly AutomataExistencias.Application.INotificationService _notificationService;
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly INotificationService _notificationService;
         private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
         /*ItemByColor*/
         private readonly IItemByColorSynchronize _itemByColorSynchronize;
@@ -43,7 +43,7 @@ namespace AutomataExistencias.Console.Jobs
         private readonly IUnitMeasuredSynchronize _unitMeasuredSynchronize;
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
         /*UpdateProcess*/
-        private readonly IUpdateProcessSynchronize _updateProcessSynchronize;        
+        private readonly IUpdateProcessSynchronize _updateProcessSynchronize;
         /*Others*/
         private readonly Logger _logger;
         private readonly IConfigurator _configurator;
@@ -64,7 +64,7 @@ namespace AutomataExistencias.Console.Jobs
 
         public SyncJob()
         {
-            var container = AutofacConfigurator.GetContainer();          
+            var container = AutofacConfigurator.GetContainer();
             /*ItemByColor*/
             _itemByColorSynchronize = container.Resolve<IItemByColorSynchronize>();
             _aldebaranItemByColorService = container.Resolve<Domain.Aldebaran.IItemByColorService>();
@@ -89,11 +89,11 @@ namespace AutomataExistencias.Console.Jobs
             /*UnitMeasured*/
             _unitMeasuredSynchronize = container.Resolve<IUnitMeasuredSynchronize>();
             _aldebaranUnitMeasuredService = container.Resolve<Domain.Aldebaran.IUnitMeasuredService>();
-            /*UpdateProcess*/ 
+            /*UpdateProcess*/
             _updateProcessSynchronize = container.Resolve<IUpdateProcessSynchronize>();
-            _automataState = container.Resolve<AutomataExistencias.Core.IAutomataState>();
-            _connectivityErrorClassifier = container.Resolve<AutomataExistencias.Application.IConnectivityErrorClassifier>();
-            _notificationService = container.Resolve<AutomataExistencias.Application.INotificationService>();
+            _automataState = container.Resolve<Core.IAutomataState>();
+            _connectivityErrorClassifier = container.Resolve<IConnectivityErrorClassifier>();
+            _notificationService = container.Resolve<INotificationService>();
             _inventoryConnectionService = container.Resolve<Domain.Aldebaran.IInventoryAutomationConnectionService>();
             /*Others*/
             var configurator = container.Resolve<IConfigurator>();
@@ -143,7 +143,16 @@ namespace AutomataExistencias.Console.Jobs
                     _logger.Error($"An exception has occurred while execution of {jobKey} | Exception: {ex}");
                     try
                     {
-                        if (_connectivityErrorClassifier.IsDestinationConnectivityError(ex.Message))
+                        // Classify destination errors as before
+                        if (_connectivityErrorClassifier.IsDestinationConnectivityError(ex.ToString()))
+                        {
+                            _automataState.RecordAttempt(0, true);
+                        }
+
+                        // Also classify origin connectivity errors using same patterns (O and B are handled by classifier)
+                        // Record origin errors into the same aggregated bucket as destinations so they contribute
+                        // to the global thresholds that trigger recovery.
+                        if (_connectivityErrorClassifier.IsOriginConnectivityError(ex.ToString()))
                         {
                             _automataState.RecordAttempt(0, true);
                         }
@@ -156,6 +165,44 @@ namespace AutomataExistencias.Console.Jobs
                     var elapsedMs = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
                     _logger.Info($"[{jobKey}] has finished in {elapsedMs.ToReadableString()}");
                 }
+
+                // After each job, evaluate thresholds and stop the rest of the schedule if connectivity is degraded.
+                try
+                {
+                    var totalAttemptsPartial = _automataState.GetTotalAttempts(_windowMinutes);
+                    var totalErrorsPartial = _automataState.GetConnectivityErrorCount(_windowMinutes);
+                    var pctPartial = _automataState.GetConnectivityErrorPercentage(_windowMinutes);
+
+                    // Do not log detailed debug per-table to avoid noise; only act if thresholds exceeded
+                    if (totalAttemptsPartial >= _minAttempts && pctPartial >= _percentThreshold)
+                    {
+                        if (!_automataState.IsDestinationConnectivityDown)
+                        {
+                            _logger.Warn($"Connectivity thresholds exceeded during run: attempts={totalAttemptsPartial}, errors={totalErrorsPartial}, percent={pctPartial:0.##}% (threshold={_percentThreshold}%). Marking DestinationConnectivityDown=true and aborting remaining schedule");
+                            _automataState.IsDestinationConnectivityDown = true;
+                            if (_automataState.DestinationConnectivityDownSince == null)
+                                _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
+
+                            var connectionsPartial = _inventoryConnectionService.GetActive().Where(c => _automataState.GetConnectionsWithErrors().Contains(c.InventoryAutomationConnectionId)).ToList();
+                            try
+                            {
+                                _notificationService.NotifyConnectivityDown(connectionsPartial, _automataState.DestinationConnectivityDownSince.Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.Error($"NotifyConnectivityDown threw an exception: {ex}");
+                            }
+                        }
+
+                        // abort the remaining schedule
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Error evaluating partial connectivity thresholds after job {jobKey}: {ex}");
+                }
+
             }
 
             // After running all jobs, evaluate connectivity error counts to decide if we should mark DOWN
@@ -166,17 +213,32 @@ namespace AutomataExistencias.Console.Jobs
                 var pct = _automataState.GetConnectivityErrorPercentage(_windowMinutes);
 
                 _logger.Info($"Connectivity window {_windowMinutes}min: attempts={totalAttempts}, errors={totalErrors}, percent={pct:0.##}%");
+                try
+                {
+                    // Show detailed debug only once at the end of the whole sync run
+                    _logger.Debug(_automataState.GetConnectivityDebugInfo(_windowMinutes));
+                }
+                catch { }
+
 
                 if (totalAttempts >= _minAttempts && pct >= _percentThreshold)
                 {
                     if (!_automataState.IsDestinationConnectivityDown)
                     {
+                        _logger.Warn($"Connectivity thresholds exceeded: attempts={totalAttempts}, errors={totalErrors}, percent={pct:0.##}% (threshold={_percentThreshold}%). Marking DestinationConnectivityDown=true");
                         _automataState.IsDestinationConnectivityDown = true;
                         if (_automataState.DestinationConnectivityDownSince == null)
                             _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
 
                         var connections = _inventoryConnectionService.GetActive().Where(c => _automataState.GetConnectionsWithErrors().Contains(c.InventoryAutomationConnectionId)).ToList();
-                        _notificationService.NotifyConnectivityDown(connections, _automataState.DestinationConnectivityDownSince.Value);
+                        try
+                        {
+                            _notificationService.NotifyConnectivityDown(connections, _automataState.DestinationConnectivityDownSince.Value);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error($"NotifyConnectivityDown threw an exception: {ex}");
+                        }
                     }
                 }
 
@@ -198,6 +260,35 @@ namespace AutomataExistencias.Console.Jobs
                         }
                     }
                 }
+
+                // Also check consecutive failures for origin (aggregated into connectionId=0)
+                try
+                {
+                    var consOrigin = _automataState.GetConsecutiveFailures(0);
+                    if (consOrigin >= _consecutiveThreshold)
+                    {
+                        if (!_automataState.IsDestinationConnectivityDown)
+                        {
+                            _automataState.IsDestinationConnectivityDown = true;
+                            if (_automataState.DestinationConnectivityDownSince == null)
+                                _automataState.DestinationConnectivityDownSince = DateTime.UtcNow;
+
+                            // Create a synthetic connection object to indicate origin in the notification
+                            var originConn = new DataAccess.Aldebaran.InventoryAutomationConnection
+                            {
+                                InventoryAutomationConnectionId = 0,
+                                ServerName = "ORIGIN",
+                                DatabaseName = "ORIGIN"
+                            };
+                            _notificationService.NotifyConnectivityDown(new[] { originConn }, _automataState.DestinationConnectivityDownSince.Value, null, consOrigin);
+                        }
+                    }
+                }
+                catch { }
+
+                // Origin is treated as part of the aggregated attempts (recorded into connectionId=0)
+                // so no separate origin evaluation is required here.
+
             }
             catch (Exception ex)
             {
@@ -206,7 +297,7 @@ namespace AutomataExistencias.Console.Jobs
         }
         private void Sync(string key)
         {
-            
+
             switch (key)
             {
                 case "MoneyJob":
@@ -268,11 +359,13 @@ namespace AutomataExistencias.Console.Jobs
 
         public void Execute(IJobExecutionContext context)
         {
-            if (_automataState.IsDestinationConnectivityDown || _automataState.IsOriginConnectivityDown)
+            _logger.Debug($"SyncJob.Execute starting. IsDestinationConnectivityDown={_automataState.IsDestinationConnectivityDown} DestinationConnectivityDownSince={_automataState.DestinationConnectivityDownSince}");
+            if (_automataState.IsDestinationConnectivityDown)
             {
-                _logger.Warn("Destination or origin connectivity is marked as DOWN. Skipping SyncJob execution.");
+                _logger.Warn("Destination connectivity is marked as DOWN. Skipping SyncJob execution.");
                 return;
             }
+
 
             // Per-run we do not fully reset sliding-window counters; keep window behavior
             // but we may clear short-lived per-run structures if needed. For now keep as-is.

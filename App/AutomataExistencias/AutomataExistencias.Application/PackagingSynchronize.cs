@@ -14,10 +14,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IPackagingHomologadosService _packagingHomologadosService;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
+        public PackagingSynchronize(Domain.Aldebaran.Homologacion.IPackagingHomologadosService packagingHomologadosService, Domain.Aldebaran.IPackagingService aldebaranPackagingService, ICatapromDestinationRunner catapromDestinationRunner, Core.IAutomataState automataState, IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranPackagingService = aldebaranPackagingService;
@@ -72,7 +72,8 @@ namespace AutomataExistencias.Application
                             _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
                         try
                         {
-                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception);
+                            var exText = ex.ToString();
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(exText);
                             _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
@@ -138,7 +139,8 @@ namespace AutomataExistencias.Application
 
                         try
                         {
-                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception);
+                            var exText = ex.ToString();
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(exText);
                             _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }

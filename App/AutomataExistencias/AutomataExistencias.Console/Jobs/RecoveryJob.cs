@@ -28,7 +28,7 @@ namespace AutomataExistencias.Console.Jobs
             try
             {
                 var container = AutofacConfigurator.GetContainer();
-                var automataState = container.Resolve<AutomataExistencias.Core.IAutomataState>();
+                var automataState = container.Resolve<Core.IAutomataState>();
                 if (!automataState.IsDestinationConnectivityDown)
                 {
                     _logger.Info("[RecoveryJob] skipping execution because destination connectivity is not marked DOWN.");
@@ -37,20 +37,20 @@ namespace AutomataExistencias.Console.Jobs
                 // Before running global recovery, validate all active destinations are reachable to avoid re-queuing events
                 try
                 {
-                    var catRunner = container.Resolve<AutomataExistencias.Application.ICatapromDestinationRunner>();
-                    var inventoryConnService = container.Resolve<AutomataExistencias.Domain.Aldebaran.IInventoryAutomationConnectionService>();
-                    var notificationService = container.Resolve<AutomataExistencias.Application.INotificationService>();
+                    var catRunner = container.Resolve<ICatapromDestinationRunner>();
+                    var inventoryConnService = container.Resolve<Domain.Aldebaran.IInventoryAutomationConnectionService>();
+                    var notificationService = container.Resolve<INotificationService>();
 
-                    var activeConnections = inventoryConnService.GetActive()?.ToList() ?? new System.Collections.Generic.List<AutomataExistencias.DataAccess.Aldebaran.InventoryAutomationConnection>();
+                    var activeConnections = inventoryConnService.GetActive()?.ToList() ?? new List<DataAccess.Aldebaran.InventoryAutomationConnection>();
                     if (!activeConnections.Any())
                     {
                         _logger.Warn("[RecoveryJob] no active destinations configured. Skipping recovery.");
                         return;
                     }
 
-                    var succeededIds = new System.Collections.Generic.HashSet<int>();
+                    var succeededIds = new HashSet<int>();
                     int timeoutSeconds = 5;
-                    int.TryParse(container.Resolve<AutomataExistencias.Core.Configuration.IConfigurator>().GetKey("Recovery.DestinationCheckTimeoutSeconds"), out timeoutSeconds);
+                    int.TryParse(container.Resolve<Core.Configuration.IConfigurator>().GetKey("Recovery.DestinationCheckTimeoutSeconds"), out timeoutSeconds);
                     if (timeoutSeconds <= 0) timeoutSeconds = 5;
 
                     // Run a light connectivity check per destination using the existing runner. We consider a destination healthy
@@ -61,7 +61,7 @@ namespace AutomataExistencias.Console.Jobs
                         {
                             try
                             {
-                                var unit = uow as AutomataExistencias.DataAccess.Core.Contract.IUnitOfWork;
+                                var unit = uow as DataAccess.Core.Contract.IUnitOfWork;
                                 if (unit == null)
                                     return;
 
@@ -103,7 +103,7 @@ namespace AutomataExistencias.Console.Jobs
                         _logger.Warn($"[RecoveryJob] some active destinations are unreachable. Skipping recovery. Failed count={failed.Count}");
                         try
                         {
-                            var since = container.Resolve<AutomataExistencias.Core.IAutomataState>().DestinationConnectivityDownSince ?? DateTime.UtcNow;
+                            var since = container.Resolve<Core.IAutomataState>().DestinationConnectivityDownSince ?? DateTime.UtcNow;
                             notificationService.NotifyConnectivityDown(failed, since);
                         }
                         catch (Exception ex)

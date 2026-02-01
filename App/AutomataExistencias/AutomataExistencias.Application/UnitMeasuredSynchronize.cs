@@ -14,10 +14,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService _measureUnitsHomologadosService; 
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
+        public UnitMeasuredSynchronize(Domain.Aldebaran.Homologacion.IMeasureUnitsHomologadosService measureUnitsHomologadosService, Domain.Aldebaran.IUnitMeasuredService aldebaranUnitMeasuredService, ICatapromDestinationRunner catapromDestinationRunner, Core.IAutomataState automataState, IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranUnitMeasuredService = aldebaranUnitMeasuredService;
@@ -69,8 +69,9 @@ namespace AutomataExistencias.Application
 
                         try
                         {
-                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
-                                _automataState.IncrementConnectivityError("UnitMeasured", connection.InventoryAutomationConnectionId);
+                            var exText = ex.ToString();
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(exText);
+                            _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
                     }

@@ -16,8 +16,11 @@ namespace AutomataExistencias.Domain.Aldebaran
 
         public IEnumerable<AutomataConnectivityErrorPattern> GetActivePatternsForTarget(char target)
         {
+            // EF cannot translate calls like target.ToString() inside expression trees.
+            // Compute the target string outside the expression so it becomes a parameter.
+            var targetStr = target.ToString();
             return _unitOfWork.Repository<AutomataConnectivityErrorPattern>()
-                .Get(w => w.IsActive && (w.Target == "B" || w.Target == target.ToString()));
+                .Get(w => w.IsActive && (w.Target == "B" || w.Target == targetStr));
         }
     }
 }

@@ -10,7 +10,7 @@ namespace AutomataExistencias.Application
     {
         private readonly IConfigurator _configurator;
         private readonly Logger _logger;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
+        private readonly Core.IAutomataState _automataState;
         private readonly IConnectivityErrorClassifier _connectivityClassifier;
         private readonly INotificationService _notificationService;
         private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
@@ -35,7 +35,7 @@ namespace AutomataExistencias.Application
         private readonly IUpdateProcessSynchronize _updateProcessSync;
 
         public SyncOrchestratorService(IConfigurator configurator,
-            AutomataExistencias.Core.IAutomataState automataState,
+            Core.IAutomataState automataState,
             IConnectivityErrorClassifier connectivityClassifier,
             INotificationService notificationService,
             Domain.Aldebaran.IInventoryAutomationConnectionService inventoryConnectionService,
@@ -89,11 +89,12 @@ namespace AutomataExistencias.Application
         {
             var syncAttempts = _configurator.GetKey("SyncAttempts").ToInt();
 
-            if (!ignoreAutomataState && (_automataState.IsDestinationConnectivityDown || _automataState.IsOriginConnectivityDown))
+            if (!ignoreAutomataState && _automataState.IsDestinationConnectivityDown)
             {
-                _logger.Warn("Destination or origin connectivity is marked as DOWN. Skipping Sync orchestration execution.");
+                _logger.Warn("Destination connectivity is marked as DOWN. Skipping Sync orchestration execution.");
                 return;
             }
+
 
             var scheduleSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence"].Split(';').ToList();
             var scheduleReverseSequence = System.Configuration.ConfigurationManager.AppSettings["Schedule.Sequence.Reverse"].Split(';').ToList();
@@ -211,6 +212,12 @@ namespace AutomataExistencias.Application
                 var pct = _automataState.GetConnectivityErrorPercentage(windowMinutes);
 
                 _logger.Info($"[Orchestrator] Connectivity window {windowMinutes}min: attempts={totalAttempts}, errors={totalErrors}, percent={pct:0.##}%");
+
+                try
+                {
+                    _logger.Debug(_automataState.GetConnectivityDebugInfo(windowMinutes));
+                }
+                catch { }
 
                 if (totalAttempts >= minAttempts && pct >= percentThreshold)
                 {

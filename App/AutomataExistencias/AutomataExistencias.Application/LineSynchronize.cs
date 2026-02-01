@@ -14,9 +14,9 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.ILineService _aldebaranLineService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
-        public LineSynchronize(Domain.Aldebaran.ILineService aldebaranLineService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
+        public LineSynchronize(Domain.Aldebaran.ILineService aldebaranLineService, ICatapromDestinationRunner catapromDestinationRunner, Core.IAutomataState automataState, IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranLineService = aldebaranLineService;

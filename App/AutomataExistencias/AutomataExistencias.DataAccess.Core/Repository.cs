@@ -40,7 +40,7 @@ namespace AutomataExistencias.DataAccess.Core
 
         public void Remove(T entity)
         {
-            _context.Entry<T>(entity).State = EntityState.Deleted;
+            _context.Entry(entity).State = EntityState.Deleted;
         }
         public void Remove(IEnumerable<T> entities)
         {

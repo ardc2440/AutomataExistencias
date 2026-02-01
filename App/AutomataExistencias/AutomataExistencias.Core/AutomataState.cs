@@ -1,4 +1,5 @@
 using System;
+using NLog;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,11 +8,9 @@ namespace AutomataExistencias.Core
 {
     public class AutomataState : IAutomataState
     {
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         public bool IsDestinationConnectivityDown { get; set; }
         public DateTime? DestinationConnectivityDownSince { get; set; }
-
-        public bool IsOriginConnectivityDown { get; set; }
-        public DateTime? OriginConnectivityDownSince { get; set; }
 
         // Sliding window data structures
         private readonly ConcurrentQueue<(DateTime Timestamp, int ConnectionId, bool IsConnectivityError)> _attemptEvents = new ConcurrentQueue<(DateTime, int, bool)>();
@@ -21,6 +20,12 @@ namespace AutomataExistencias.Core
         {
             var now = DateTime.UtcNow;
             _attemptEvents.Enqueue((now, connectionId, isConnectivityError));
+
+            try
+            {
+                _logger.Debug($"RecordAttempt: Timestamp={now:O}, ConnectionId={connectionId}, IsConnectivityError={isConnectivityError}");
+            }
+            catch { }
 
             if (isConnectivityError)
             {
@@ -73,6 +78,28 @@ namespace AutomataExistencias.Core
             return (errors * 100.0) / total;
         }
 
+        // Per-connection (or origin) helpers. connectionId can be a special value (e.g. -1 for origin)
+        public int GetTotalAttemptsForConnection(int connectionId, int windowMinutes)
+        {
+            TrimOldEvents(windowMinutes);
+            return _attemptEvents.Where(e => e.ConnectionId == connectionId).Count();
+        }
+
+        public int GetConnectivityErrorCountForConnection(int connectionId, int windowMinutes)
+        {
+            TrimOldEvents(windowMinutes);
+            return _attemptEvents.Where(e => e.ConnectionId == connectionId && e.IsConnectivityError).Count();
+        }
+
+        public double GetConnectivityErrorPercentageForConnection(int connectionId, int windowMinutes)
+        {
+            TrimOldEvents(windowMinutes);
+            var total = _attemptEvents.Where(e => e.ConnectionId == connectionId).Count();
+            if (total == 0) return 0;
+            var errors = _attemptEvents.Where(e => e.ConnectionId == connectionId && e.IsConnectivityError).Count();
+            return (errors * 100.0) / total;
+        }
+
         public IEnumerable<int> GetConnectionsWithErrors()
         {
             return _consecutiveFailures.Keys;
@@ -101,6 +128,34 @@ namespace AutomataExistencias.Core
         public int GetTotalConnectivityErrorCount()
         {
             return _attemptEvents.Where(e => e.IsConnectivityError).Count();
+        }
+
+        public string GetConnectivityDebugInfo(int windowMinutes)
+        {
+            TrimOldEvents(windowMinutes);
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Connectivity Debug - WindowMinutes={windowMinutes}");
+            sb.AppendLine($"Total attempts in window: {_attemptEvents.Count}");
+            sb.AppendLine($"Total connectivity errors in window: {_attemptEvents.Where(e => e.IsConnectivityError).Count()}");
+            sb.AppendLine("Events:");
+            foreach (var ev in _attemptEvents)
+            {
+                sb.AppendLine($"  {ev.Timestamp:O} | ConnectionId={ev.ConnectionId} | IsConnectivityError={ev.IsConnectivityError}");
+            }
+            sb.AppendLine("Per-connection attempts and errors:");
+            var grouped = _attemptEvents.GroupBy(e => e.ConnectionId).OrderBy(g => g.Key);
+            foreach (var g in grouped)
+            {
+                var attempts = g.Count();
+                var errors = g.Count(e => e.IsConnectivityError);
+                sb.AppendLine($"  ConnectionId={g.Key} Attempts={attempts} Errors={errors} ConsecutiveFailures={GetConsecutiveFailures(g.Key)}");
+            }
+            sb.AppendLine("Consecutive failures map:");
+            foreach (var kv in _consecutiveFailures.OrderBy(kv => kv.Key))
+            {
+                sb.AppendLine($"  ConnectionId={kv.Key} -> {kv.Value}");
+            }
+            return sb.ToString();
         }
 
         public void ResetConnectivityErrorCounts()

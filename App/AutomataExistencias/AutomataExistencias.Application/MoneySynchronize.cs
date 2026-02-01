@@ -13,11 +13,11 @@ namespace AutomataExistencias.Application
         private readonly Logger _logger;
         private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
         private readonly Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService _currenciesHomologadosService;
 
-        public MoneySynchronize(Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
+        public MoneySynchronize(Domain.Aldebaran.Homologacion.ICurrenciesHomologadosService currenciesHomologadosService, Domain.Aldebaran.IMoneyService aldebaranMoneyService, ICatapromDestinationRunner catapromDestinationRunner, Core.IAutomataState automataState, IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranMoneyService = aldebaranMoneyService;
@@ -69,8 +69,9 @@ namespace AutomataExistencias.Application
 
                         try
                         {
-                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
-                                _automataState.IncrementConnectivityError("Money", connection.InventoryAutomationConnectionId);
+                            var exText = ex.ToString();
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(exText);
+                            _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
                     }

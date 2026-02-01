@@ -20,11 +20,17 @@ namespace AutomataExistencias.DataAccess.Core
         public DbSet<InventoryAutomationConnection> InventoryAutomationConnections { get; set; }
         public DbSet<CatalogItem> CatalogItems { get; set; }
 
+        // Notification recipients
+        public DbSet<AutomataNotificationRecipient> AutomataNotificationRecipients { get; set; }
+
         public DbSet<ItemHomologado> ItemHomologados { get; set; }
         public DbSet<ItemReferenceHomologado> ItemReferenceHomologados { get; set; }
         public DbSet<CurrencyHomologado> CurrencyHomologados { get; set; }
         public DbSet<MeasureUnitHomologado> MeasureUnitHomologados { get; set; }
         public DbSet<PackagingHomologado> PackagingHomologados { get; set; }
+
+        // Entity used by connectivity pattern service
+        public DbSet<AutomataConnectivityErrorPattern> AutomataConnectivityErrorPatterns { get; set; }
 
         #endregion
 

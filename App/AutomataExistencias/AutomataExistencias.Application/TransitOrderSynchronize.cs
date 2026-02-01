@@ -14,10 +14,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
         private readonly ICatapromDestinationRunner _catapromDestinationRunner;
         private readonly Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService _itemReferencesHomologadosService;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private readonly Core.IAutomataState _automataState;
+        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
 
-        public TransitOrderSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, ICatapromDestinationRunner catapromDestinationRunner, AutomataExistencias.Core.IAutomataState automataState, AutomataExistencias.Application.IConnectivityErrorClassifier connectivityErrorClassifier)
+        public TransitOrderSynchronize(Domain.Aldebaran.Homologacion.IItemReferencesHomologadosService itemReferencesHomologadosService, Domain.Aldebaran.ITransitOrderService aldebaranTransitOrderService, ICatapromDestinationRunner catapromDestinationRunner, Core.IAutomataState automataState, IConnectivityErrorClassifier connectivityErrorClassifier)
         {
             _logger = LogManager.GetCurrentClassLogger();
             _aldebaranTransitOrderService = aldebaranTransitOrderService;
@@ -31,10 +31,10 @@ namespace AutomataExistencias.Application
             var dataFirebird = data.OrderBy(t => t.Id).ToList();
             if (!dataFirebird.Any())
             {
-                _logger.Info("No records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
+                _logger.Info("No records to insert/update from Aldebaran to Cataprom [TransitOrderSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Aldebaran to Cataprom [TransitOrderSync]");
 
             var inserted = 0;
             foreach (var item in dataFirebird)
@@ -72,8 +72,9 @@ namespace AutomataExistencias.Application
 
                         try
                         {
-                            if (_connectivityErrorClassifier.IsDestinationConnectivityError(item.Exception))
-                                _automataState.IncrementConnectivityError("TransitOrder", connection.InventoryAutomationConnectionId);
+                            var exText = ex.ToString();
+                            var isConn = _connectivityErrorClassifier.IsDestinationConnectivityError(exText);
+                            _automataState.RecordAttempt(connection.InventoryAutomationConnectionId, isConn);
                         }
                         catch { }
                     }
@@ -105,10 +106,10 @@ namespace AutomataExistencias.Application
             var dataFirebird = data.OrderBy(t => t.Id).ToList();
             if (!dataFirebird.Any())
             {
-                _logger.Info("No records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
+                _logger.Info("No records to delete from Aldebaran to Cataprom [TransitOrderReverseSync]");
                 return;
             }
-            _logger.Info($"Found {dataFirebird.Count} records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
+            _logger.Info($"Found {dataFirebird.Count} records to delete from Aldebaran to Cataprom [TransitOrderReverseSync]");
 
             var deleted = 0;
             foreach (var item in dataFirebird)

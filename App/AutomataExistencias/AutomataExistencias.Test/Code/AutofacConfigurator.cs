@@ -27,13 +27,13 @@ namespace AutomataExistencias.Test.Code
             builder.RegisterType<UnitOfWorkCataprom>().As<IUnitOfWorkCataprom>();
 
             // Automata state singleton for tests
-            builder.RegisterType<AutomataExistencias.Core.AutomataState>().As<AutomataExistencias.Core.IAutomataState>().SingleInstance();
+            builder.RegisterType<Core.AutomataState>().As<Core.IAutomataState>().SingleInstance();
 
             // Connectivity classifier for tests
-            builder.RegisterType<AutomataExistencias.Application.ConnectivityErrorClassifier>().As<AutomataExistencias.Application.IConnectivityErrorClassifier>().SingleInstance();
+            builder.RegisterType<ConnectivityErrorClassifier>().As<IConnectivityErrorClassifier>().SingleInstance();
 
             // Notification service for tests
-            builder.RegisterType<AutomataExistencias.Application.NotificationService>().As<AutomataExistencias.Application.INotificationService>();
+            builder.RegisterType<NotificationService>().As<INotificationService>();
 
             /*Cataprom*/
             builder.RegisterType<Domain.Cataprom.MoneyService>().As<Domain.Cataprom.IMoneyService>();

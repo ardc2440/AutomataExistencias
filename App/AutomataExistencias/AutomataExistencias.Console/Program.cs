@@ -31,7 +31,7 @@ namespace AutomataExistencias.Console
                 }
 
                 // Startup recovery check: if many pending connectivity errors exist, trigger recovery flow before starting agent
-                var recoveryChecker = container.Resolve<AutomataExistencias.Application.IStartupRecoveryChecker>();
+                var recoveryChecker = container.Resolve<Application.IStartupRecoveryChecker>();
                 if (recoveryChecker.ShouldRunRecoveryOnStartup())
                 {
                     logger.Warn("StartupRecoveryChecker determined recovery should run before starting the agent. Executing lightweight recovery/notification.");

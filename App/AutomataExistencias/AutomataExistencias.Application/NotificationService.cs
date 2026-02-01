@@ -13,12 +13,16 @@ namespace AutomataExistencias.Application
     {
         private readonly IAutomataNotificationRecipientService _recipientService;
         private readonly Logger _logger;
+        private readonly Core.IAutomataState _automataState;
 
-        public NotificationService(IAutomataNotificationRecipientService recipientService)
+        public NotificationService(IAutomataNotificationRecipientService recipientService, Core.IAutomataState automataState)
         {
             _recipientService = recipientService;
+            _automataState = automataState;
             _logger = LogManager.GetCurrentClassLogger();
         }
+
+        // Origin is treated as part of aggregated connectivity checks; no separate origin notifications implemented here.
 
         public void NotifyConnectivityDown(IEnumerable<InventoryAutomationConnection> connections, DateTime since, IEnumerable<Item> failedItems = null, int consecutiveFailures = 0)
         {
@@ -33,8 +37,37 @@ namespace AutomataExistencias.Application
 
                 var subject = "[Automata] Connectivity DOWN" + (consecutiveFailures > 0 ? $" - Attempts={consecutiveFailures}" : string.Empty);
 
+                // Build body including origin vs destination error counts when available
                 var body = $"Connectivity to destinations marked DOWN since {since:u}.\r\n\r\nDestinations:\r\n" +
                            string.Join("\r\n", connections.Select(c => $"- {c.ServerName} - {c.DatabaseName} (Id={c.InventoryAutomationConnectionId})"));
+
+                try
+                {
+                    var totalErrors = 0;
+                    var originErrors = 0;
+                    var destErrors = 0;
+                    try
+                    {
+                        if (_automataState != null)
+                        {
+                            totalErrors = _automataState.GetTotalConnectivityErrorCount();
+                            // Use configured window minutes for origin count so origin behaves like any other destination
+                            var app = System.Configuration.ConfigurationManager.AppSettings;
+                            int windowMinutes;
+                            if (!int.TryParse(app["ConnectivityError.WindowMinutes"], out windowMinutes) || windowMinutes <= 0)
+                                windowMinutes = 15;
+                            originErrors = _automataState.GetConnectivityErrorCountForConnection(0, windowMinutes);
+                            destErrors = totalErrors - originErrors;
+                        }
+                    }
+                    catch { }
+
+                    if (totalErrors > 0)
+                    {
+                        body += $"\r\n\r\nError counts: Total={totalErrors}, Origin={originErrors}, Destinations={destErrors}\r\n";
+                    }
+                }
+                catch { }
 
                 if (failedItems != null && failedItems.Any())
                 {

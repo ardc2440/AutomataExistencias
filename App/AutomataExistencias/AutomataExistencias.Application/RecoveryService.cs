@@ -10,24 +10,30 @@ namespace AutomataExistencias.Application
         // Only keep injected dependencies that are actually used by the recovery logic
         private readonly Domain.Aldebaran.IItemsMasterService _itemsMasterService;
         private readonly Domain.Aldebaran.IRecoveryDomainService _recoveryDomainService;
-        private readonly AutomataExistencias.Core.Configuration.IConfigurator _configurator;
+        private readonly Core.Configuration.IConfigurator _configurator;
         private readonly ISyncOrchestrator _syncOrchestrator;
-        private readonly AutomataExistencias.Core.IAutomataState _automataState;
-        private readonly AutomataExistencias.Application.INotificationService _notificationService;
+        private readonly Core.IAutomataState _automataState;
+        private readonly INotificationService _notificationService;
+        private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
+        private readonly Core.Configuration.IAldebaranApplicationEnvironment _aldebaranEnvironment;
         private readonly Logger _logger;
 
         public RecoveryService(Domain.Aldebaran.IItemsMasterService itemsMasterService,
             Domain.Aldebaran.IRecoveryDomainService recoveryDomainService,
             ISyncOrchestrator syncOrchestrator,
-            AutomataExistencias.Core.Configuration.IConfigurator configurator,
-            AutomataExistencias.Core.IAutomataState automataState,
-            AutomataExistencias.Application.INotificationService notificationService)
+            Core.Configuration.IConfigurator configurator,
+            Core.IAutomataState automataState,
+            INotificationService notificationService,
+            Domain.Aldebaran.IInventoryAutomationConnectionService inventoryConnectionService,
+            Core.Configuration.IAldebaranApplicationEnvironment aldebaranEnvironment)
         {
             _itemsMasterService = itemsMasterService;
             _recoveryDomainService = recoveryDomainService;
             _syncOrchestrator = syncOrchestrator;
             _configurator = configurator;
             _automataState = automataState;
+            _inventoryConnectionService = inventoryConnectionService;
+            _aldebaranEnvironment = aldebaranEnvironment;
             _notificationService = notificationService;
             _logger = LogManager.GetCurrentClassLogger();
         }
@@ -37,6 +43,20 @@ namespace AutomataExistencias.Application
             try
             {
                 _logger.Info("RecoveryService: starting single recovery attempt");
+
+                // Only attempt recovery when connectivity is marked as DOWN. If not, skip.
+                if (!_automataState.IsDestinationConnectivityDown)
+                {
+                    _logger.Info("RecoveryService: connectivity is not marked DOWN. Skipping recovery.");
+                    return false;
+                }
+
+                // Confirm connectivity restored for origin + destinations before starting recovery
+                if (!ConfirmConnectivityRestored(out var failedList))
+                {
+                    _logger.Warn($"RecoveryService: connectivity check failed. {failedList.Count} failed connections. Aborting recovery.");
+                    return false;
+                }
 
                 // New orchestration: per-item recovery using master items and domain recovery service
                 var syncAttempts = 0;
@@ -247,9 +267,11 @@ namespace AutomataExistencias.Application
                     _logger.Info($"RecoveryService: recovery succeeded for {processedArticles} articles");
                     var since = _automataState.DestinationConnectivityDownSince ?? DateTime.UtcNow;
                     var until = DateTime.UtcNow;
+                    _logger.Info("RecoveryService: resetting connectivity error counts and clearing DestinationConnectivityDown flag");
                     _automataState.ResetConnectivityErrorCounts();
                     _automataState.IsDestinationConnectivityDown = false;
                     _automataState.DestinationConnectivityDownSince = null;
+                    _logger.Info($"DestinationConnectivityDown cleared. Sync will be reactivated. Articles processed: {processedArticles}");
                     _notificationService.NotifyConnectivityRecovered(processedArticles, since, until);
                     return true;
                 }
@@ -269,6 +291,75 @@ namespace AutomataExistencias.Application
             // Reuse SyncJob.RunOnceForced by resolving it from container and invoking the method
             // execute orchestrator via injected service
             _syncOrchestrator.RunOnce(true);
+        }
+
+        // Active connectivity check: verify origin and all destinations are reachable.
+        // Returns true if number of failed connections <= allowedFailures (configurable, default 0).
+        private bool ConfirmConnectivityRestored(out System.Collections.Generic.List<string> failedConnections)
+        {
+            failedConnections = new System.Collections.Generic.List<string>();
+            try
+            {
+                var timeoutSeconds = 5;
+                int.TryParse(_configurator.GetKey("Recovery.ConnectivityCheckTimeoutSeconds"), out timeoutSeconds);
+                if (timeoutSeconds <= 0) timeoutSeconds = 5;
+
+                var allowedFailures = 0;
+                int.TryParse(_configurator.GetKey("Recovery.AllowFailedConnections"), out allowedFailures);
+                if (allowedFailures < 0) allowedFailures = 0;
+
+                // Check origin (Aldebaran)
+                try
+                {
+                    var connStr = _aldebaranEnvironment.GetConnectionString();
+                    using (var conn = new SqlConnection(connStr))
+                    {
+                        conn.ConnectionString = connStr;
+                        conn.Open();
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = "SELECT 1";
+                            cmd.CommandTimeout = timeoutSeconds;
+                            cmd.ExecuteScalar();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failedConnections.Add($"ORIGIN: {ex.Message}");
+                }
+
+                // Check destinations
+                var destinations = _inventoryConnectionService.GetActive().ToList();
+                foreach (var dest in destinations)
+                {
+                    try
+                    {
+                        var cs = Domain.Aldebaran.InventoryAutomationConnectionStringBuilder.Build(dest);
+                        using (var conn = new SqlConnection(cs))
+                        {
+                            conn.Open();
+                            using (var cmd = conn.CreateCommand())
+                            {
+                                cmd.CommandText = "SELECT 1";
+                                cmd.CommandTimeout = timeoutSeconds;
+                                cmd.ExecuteScalar();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failedConnections.Add($"DEST:{dest.InventoryAutomationConnectionId}:{dest.ServerName}:{dest.DatabaseName} => {ex.Message}");
+                    }
+                }
+
+                return failedConnections.Count <= allowedFailures;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"ConfirmConnectivityRestored fatal error: {ex}");
+                return false;
+            }
         }
     }
 }

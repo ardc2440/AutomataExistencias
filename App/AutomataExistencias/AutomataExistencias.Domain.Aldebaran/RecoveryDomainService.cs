@@ -16,7 +16,7 @@ namespace AutomataExistencias.Domain.Aldebaran
 
         public IEnumerable<int> GetCandidateItemIds(int syncAttempts)
         {
-            var set = new System.Collections.Generic.HashSet<int>();
+            var set = new HashSet<int>();
 
             var items = _unitOfWork.Repository<Item>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ItemId);
             foreach (var id in items) if (id > 0) set.Add(id);
@@ -83,7 +83,7 @@ namespace AutomataExistencias.Domain.Aldebaran
             _unitOfWork.Repository<TransitOrder>().SaveChanges();
         }
 
-        public int CountPendingEventsForItems(System.Collections.Generic.IEnumerable<int> itemIds, int syncAttempts)
+        public int CountPendingEventsForItems(IEnumerable<int> itemIds, int syncAttempts)
         {
             var count = 0;
             foreach (var id in itemIds)
