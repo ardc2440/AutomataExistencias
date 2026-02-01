@@ -79,7 +79,34 @@ namespace AutomataExistencias.Application
                 if (!candidates.Any())
                 {
                     _logger.Info("RecoveryService: no eligible articles to recover");
-                    return false;
+
+                    // Revalidate connectivity before clearing the DOWN flag. If connectivity still fails,
+                    // keep the flag so Sync remains disabled.
+                    try
+                    {
+                        if (!ConfirmConnectivityRestored(out var failedAfter))
+                        {
+                            _logger.Warn($"RecoveryService: connectivity still failing on recheck. {failedAfter.Count} failed connections. Will keep DestinationConnectivityDown flag set.");
+                            foreach (var f in failedAfter) _logger.Debug($"RecoveryService: failed connection: {f}");
+                            return false;
+                        }
+
+                        var since = _automataState.DestinationConnectivityDownSince ?? DateTime.UtcNow;
+                        var until = DateTime.UtcNow;
+                        _logger.Info("RecoveryService: connectivity revalidated OK; resetting connectivity error counts and clearing DestinationConnectivityDown flag (no articles)");
+                        _automataState.ResetConnectivityErrorCounts();
+                        _automataState.IsDestinationConnectivityDown = false;
+                        _automataState.DestinationConnectivityDownSince = null;
+                        _logger.Info("DestinationConnectivityDown cleared. Sync will be reactivated. Articles processed: 0");
+                        try { _notificationService.NotifyConnectivityRecovered(0, since, until); } catch { }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        _logger.Error($"RecoveryService: error while revalidating/clearing connectivity flag: {ex}");
+                        return false;
+                    }
+
+                    return true;
                 }
                 var toProcess = candidates.Take(batchSize).ToList();
                 var processedArticles = 0;
