@@ -14,6 +14,9 @@ namespace AutomataExistencias.Application
         private readonly IAutomataNotificationRecipientService _recipientService;
         private readonly Logger _logger;
         private readonly Core.IAutomataState _automataState;
+        // Track whether we've already sent a connectivity-down notification to avoid repeats
+        private readonly object _connectivityNotifLock = new object();
+        private bool _connectivityDownNotified;
 
         public NotificationService(IAutomataNotificationRecipientService recipientService, Core.IAutomataState automataState)
         {
@@ -28,6 +31,18 @@ namespace AutomataExistencias.Application
         {
             try
             {
+                // Send only once per DOWN transition. If we've already sent a DOWN notification and
+                // the state hasn't been recovered yet, skip duplicate notifications.
+                lock (_connectivityNotifLock)
+                {
+                    if (_connectivityDownNotified)
+                    {
+                        _logger.Debug("NotifyConnectivityDown: duplicate notification suppressed (already sent for current DOWN state)");
+                        return;
+                    }
+                    // mark as sent now (will be cleared on recovered)
+                    _connectivityDownNotified = true;
+                }
                 var recipients = _recipientService.GetActiveByType("CONNECTIVITY").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
                 if (!recipients.Any())
                 {
@@ -88,6 +103,12 @@ namespace AutomataExistencias.Application
         {
             try
             {
+                // Clear the marker so future DOWN transitions will notify again
+                lock (_connectivityNotifLock)
+                {
+                    _connectivityDownNotified = false;
+                }
+
                 var recipients = _recipientService.GetActiveByType("CONNECTIVITY").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
                 if (!recipients.Any())
                 {

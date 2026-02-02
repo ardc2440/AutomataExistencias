@@ -21,7 +21,10 @@ namespace AutomataExistencias.Domain.Aldebaran
             if (string.Equals(notificationType, "CONNECTIVITY", System.StringComparison.OrdinalIgnoreCase))
             {
                 return _unitOfWork.Repository<AutomataNotificationRecipient>()
-                    .Get(w => w.IsActive && (w.NotificationTypeUpper == "CONNECTIVITY_DOWN" || w.NotificationTypeUpper == "CONNECTIVITY_RECOVERED"));
+                    .Get(w => w.IsActive && (
+                        (w.NotificationType != null && w.NotificationType.ToUpper() == "CONNECTIVITY_DOWN") ||
+                        (w.NotificationType != null && w.NotificationType.ToUpper() == "CONNECTIVITY_RECOVERED")
+                    ));
             }
 
             // map legacy/general notifications to BUSINESS_ERROR (DB value: 'BUSINESS_ERROR')
@@ -29,7 +32,7 @@ namespace AutomataExistencias.Domain.Aldebaran
                 string.Equals(notificationType, "BUSINESS", System.StringComparison.OrdinalIgnoreCase))
             {
                 return _unitOfWork.Repository<AutomataNotificationRecipient>()
-                    .Get(w => w.IsActive && w.NotificationTypeUpper == "BUSINESS_ERROR");
+                    .Get(w => w.IsActive && w.NotificationType != null && w.NotificationType.ToUpper() == "BUSINESS_ERROR");
             }
 
             return _unitOfWork.Repository<AutomataNotificationRecipient>()
