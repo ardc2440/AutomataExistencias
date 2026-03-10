@@ -28,15 +28,9 @@ namespace AutomataExistencias.Application
         }
         public void Sync(IEnumerable<UnitMeasured> data, int syncAttempts)
         {
-            var dataFirebird = data.OrderBy(u => u.Id).ToList();
-            if (!dataFirebird.Any())
-            {
-                _logger.Info("No records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
-                return;
-            }
-            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
-
+            var dataFirebird = data.OrderBy(u => u.Id);
             var inserted = 0;
+            var processed = 0;
             foreach (var item in dataFirebird)
             {
                 var allDestinationsOk = true;
@@ -63,9 +57,9 @@ namespace AutomataExistencias.Application
                         var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
                         item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
 
                         try
                         {
@@ -79,6 +73,7 @@ namespace AutomataExistencias.Application
 
                 try
                 {
+                    processed++;
                     if (allDestinationsOk)
                     {
                         _aldebaranUnitMeasuredService.Remove(item);
@@ -94,6 +89,13 @@ namespace AutomataExistencias.Application
                     _aldebaranUnitMeasuredService.SaveChanges();
                 }
             }
+            if (processed == 0)
+            {
+                _logger.Info("No records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
+                return;
+            }
+
+            _logger.Info($"Found {processed} records to insert/update from Aldebaran to Cataprom [UnitMeasuredSync]");
 
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from UnitMeasured sql table");
@@ -101,15 +103,9 @@ namespace AutomataExistencias.Application
 
         public void ReverseSync(IEnumerable<UnitMeasured> data, int syncAttempts)
         {
-            var dataFirebird = data.OrderBy(u => u.Id).ToList();
-            if (!dataFirebird.Any())
-            {
-                _logger.Info("No records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
-                return;
-            }
-            _logger.Info($"Found {dataFirebird.Count} records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
-
+            var dataFirebird = data.OrderBy(u => u.Id);
             var deleted = 0;
+            var processed = 0;
             foreach (var item in dataFirebird)
             {
                 var allDestinationsOk = true;
@@ -131,9 +127,9 @@ namespace AutomataExistencias.Application
                         var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
                         item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"[{connInfo}] Internal error when trying to delete a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to delete a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a UnitMeasured from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a UnitMeasured from Aldebaran to Cataprom. | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                     }
                 });
 
@@ -153,7 +149,15 @@ namespace AutomataExistencias.Application
                 {
                     _aldebaranUnitMeasuredService.SaveChanges();
                 }
+                processed++;
             }
+            if (processed == 0)
+            {
+                _logger.Info("No records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
+                return;
+            }
+
+            _logger.Info($"Found {processed} records to delete from Aldebaran to Cataprom [UnitMeasuredReverseSync]");
 
             if (deleted > 0)
                 _logger.Info($"{deleted} records has been deleted from UnitMeasured sql table");

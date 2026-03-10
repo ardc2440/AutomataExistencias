@@ -28,15 +28,9 @@ namespace AutomataExistencias.Application
         }
         public void Sync(IEnumerable<Packaging> data, int syncAttempts)
         {
-            var dataFirebird = data.OrderBy(p => p.Id).ToList();
-            if (!dataFirebird.Any())
-            {
-                _logger.Info("No records to insert/update from Aldebaran to Cataprom [PackagingSync]");
-                return;
-            }
-            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Aldebaran to Cataprom [PackagingSync]");
-
+            var dataFirebird = data.OrderBy(p => p.Id);
             var inserted = 0;
+            var processed = 0;
             foreach (var item in dataFirebird)
             {
                 var allDestinationsOk = true;
@@ -67,9 +61,9 @@ namespace AutomataExistencias.Application
                         var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
                         item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update a Packaging from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: Id={item.Id},PackagingId={item.PackagingId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Packaging from Aldebaran to Cataprom. | Data: Id={item.Id},PackagingId={item.PackagingId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         try
                         {
                             var exText = ex.ToString();
@@ -82,6 +76,7 @@ namespace AutomataExistencias.Application
 
                 try
                 {
+                    processed++;
                     if (allDestinationsOk)
                     {
                         _aldebaranPackagingService.Remove(item);
@@ -97,21 +92,22 @@ namespace AutomataExistencias.Application
                     _aldebaranPackagingService.SaveChanges();
                 }
             }
+            if (processed == 0)
+            {
+                _logger.Info("No records to insert/update from Aldebaran to Cataprom [PackagingSync]");
+                return;
+            }
+
+            _logger.Info($"Found {processed} records to insert/update from Aldebaran to Cataprom [PackagingSync]");
 
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from Packaging sql table");
         }
         public void ReverseSync(IEnumerable<Packaging> data, int syncAttempts)
         {
-            var dataFirebird = data.OrderBy(p => p.Id).ToList();
-            if (!dataFirebird.Any())
-            {
-                _logger.Info("No records to delete from Aldebaran to Cataprom [PackagingReverseSync]");
-                return;
-            }
-            _logger.Info($"Found {dataFirebird.Count} records to delete from Aldebaran to Cataprom [PackagingReverseSync]");
-
+            var dataFirebird = data.OrderBy(p => p.Id);
             var deleted = 0;
+            var processed = 0;
             foreach (var item in dataFirebird)
             {
                 var allDestinationsOk = true;

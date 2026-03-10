@@ -29,15 +29,9 @@ namespace AutomataExistencias.Application
         }
         public void Sync(IEnumerable<Stock> data, int syncAttempts)
         {
-            var dataFirebird = data.OrderBy(s => s.Id).ToList();
-            if (!dataFirebird.Any())
-            {
-                _logger.Info("No records to insert/update from Aldebaran to Cataprom [StockSync]");
-                return;
-            }
-            _logger.Info($"Found {dataFirebird.Count} records to insert/update from Aldebaran to Cataprom [StockSync]");
-
+            var dataFirebird = data.OrderBy(s => s.Id);
             var inserted = 0;
+            var processed = 0;
             foreach (var item in dataFirebird)
             {
                 var allDestinationsOk = true;
@@ -66,9 +60,9 @@ namespace AutomataExistencias.Application
                         var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
                         item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to insert/update a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: Id={item.Id},ColorItemId={item.ColorItemId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a Stock from Aldebaran to Cataprom. | Data: Id={item.Id},ColorItemId={item.ColorItemId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
 
                         try
                         {
@@ -82,6 +76,7 @@ namespace AutomataExistencias.Application
 
                 try
                 {
+                    processed++;
                     if (allDestinationsOk)
                     {
                         _aldebaranStockService.Remove(item);
@@ -97,21 +92,22 @@ namespace AutomataExistencias.Application
                     _aldebaranStockService.SaveChanges();
                 }
             }
+            if (processed == 0)
+            {
+                _logger.Info("No records to insert/update from Aldebaran to Cataprom [StockSync]");
+                return;
+            }
+
+            _logger.Info($"Found {processed} records to insert/update from Aldebaran to Cataprom [StockSync]");
 
             if (inserted > 0)
                 _logger.Info($"{inserted} records has been inserted/updated from Stock sql table");
         }
         public void ReverseSync(IEnumerable<Stock> data, int syncAttempts)
         {
-            var dataFirebird = data.OrderBy(s => s.Id).ToList();
-            if (!dataFirebird.Any())
-            {
-                _logger.Info("No records to delete from Aldebaran to Cataprom [StockReverseSync]");
-                return;
-            }
-            _logger.Info($"Found {dataFirebird.Count} records to delete from Aldebaran to Cataprom [StockReverseSync]");
-
+            var dataFirebird = data.OrderBy(s => s.Id);
             var deleted = 0;
+            var processed = 0;
             foreach (var item in dataFirebird)
             {
                 var allDestinationsOk = true;
@@ -137,9 +133,9 @@ namespace AutomataExistencias.Application
                         var connInfo = $"ConnId={connection.InventoryAutomationConnectionId}, Server={connection.ServerName}, Database={connection.DatabaseName}";
                         item.Exception = $"{connInfo} | Attempts ({item.Attempts}/{syncAttempts}): {ex.ToJson()}";
                         if (item.Attempts < syncAttempts)
-                            _logger.Error($"[{connInfo}] Internal error when trying to delete a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Error($"[{connInfo}] Internal error when trying to delete a Stock from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: Id={item.Id},ColorItemId={item.ColorItemId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Stock from Aldebaran to Cataprom. | Data: {JsonConvert.SerializeObject(item)} | Exception: {ex.ToJson()}");
+                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to delete a Stock from Aldebaran to Cataprom. | Data: Id={item.Id},ColorItemId={item.ColorItemId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                     }
                 });
 
@@ -159,7 +155,15 @@ namespace AutomataExistencias.Application
                 {
                     _aldebaranStockService.SaveChanges();
                 }
+                processed++;
             }
+            if (processed == 0)
+            {
+                _logger.Info("No records to delete from Aldebaran to Cataprom [StockReverseSync]");
+                return;
+            }
+
+            _logger.Info($"Found {processed} records to delete from Aldebaran to Cataprom [StockReverseSync]");
 
             if (deleted > 0)
                 _logger.Info($"{deleted} records has been deleted from Stock sql table");
