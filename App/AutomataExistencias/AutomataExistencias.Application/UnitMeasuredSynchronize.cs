@@ -59,7 +59,13 @@ namespace AutomataExistencias.Application
                         if (item.Attempts < syncAttempts)
                             _logger.Error($"[{connInfo}] Internal error when trying to insert/update a UnitMeasured from Aldebaran to Cataprom ({item.Attempts}/{syncAttempts}) | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
                         else
-                            _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
+                        {
+                            var full = SerializationThrottler.SerializeIfAllowed(item, "UnitMeasuredSync");
+                            if (!string.IsNullOrEmpty(full))
+                                _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | FullData: {full} | Exception: {ex.ToJson()}");
+                            else
+                                _logger.Fatal($"[{connInfo}] Exceeded attempts ({item.Attempts}/{syncAttempts}) when trying to insert/update a UnitMeasured from Aldebaran to Cataprom. | Data: Id={item.Id},UnitMeasuredId={item.UnitMeasuredId},Attempts={item.Attempts} | Exception: {ex.ToJson()}");
+                        }
 
                         try
                         {

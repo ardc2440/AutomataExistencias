@@ -98,6 +98,7 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RecoveryService.cs" />
+    <Compile Include="SerializationThrottler.cs" />
     <Compile Include="StartupRecoveryChecker.cs" />
     <Compile Include="StockSynchronize.cs">
       <DependentUpon>IStockSynchronize.cs</DependentUpon>
