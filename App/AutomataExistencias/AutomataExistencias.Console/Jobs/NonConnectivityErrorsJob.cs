@@ -13,15 +13,14 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class NonConnectivityErrorsJob : IJob
     {
-        private readonly Domain.Aldebaran.IItemService _itemService;
-        private readonly INotificationService _notificationService;
-        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
-        private readonly IConfigurator _configurator;
-        private readonly Logger _logger;
+        private Domain.Aldebaran.IItemService _itemService;
+        private INotificationService _notificationService;
+        private IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private IConfigurator _configurator;
+        private Logger _logger;
 
-        public NonConnectivityErrorsJob()
+        private void ResolveDependencies(ILifetimeScope container)
         {
-            var container = AutofacConfigurator.GetContainer();
             _itemService = container.Resolve<Domain.Aldebaran.IItemService>();
             _notificationService = container.Resolve<INotificationService>();
             _connectivityErrorClassifier = container.Resolve<IConnectivityErrorClassifier>();
@@ -30,6 +29,26 @@ namespace AutomataExistencias.Console.Jobs
         }
 
         public void Execute(IJobExecutionContext context)
+        {
+            // Hotfix_CaidaServicio: cada ejecucion usa su propio lifetime scope de Autofac.
+            // Al salir del using se liberan (Dispose) los DbContext creados en la ejecucion;
+            // antes se resolvian desde el contenedor raiz y quedaban retenidos (fuga de memoria).
+            try
+            {
+                using (var scope = AutofacConfigurator.GetContainer().BeginLifetimeScope())
+                {
+                    ResolveDependencies(scope);
+                    ExecuteInternal();
+                }
+            }
+            catch (Exception ex)
+            {
+                // No propagar a Quartz: la siguiente ejecucion debe dispararse normalmente.
+                LogManager.GetCurrentClassLogger().Error($"[NonConnectivityErrorsJob] unhandled error: {ex}");
+            }
+        }
+
+        private void ExecuteInternal()
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
             _logger.Info("[NonConnectivityErrorsJob] has started");
@@ -45,7 +64,8 @@ namespace AutomataExistencias.Console.Jobs
 
                 var since = DateTime.UtcNow.Subtract(interval);
 
-                var candidates = _itemService.Get().Where(i => i.Attempts > 0).ToList();
+                // Hotfix_CaidaServicio: filtro en SQL; antes Get() traia toda la tabla RITEMS a memoria (OOM 27-sep).
+                var candidates = _itemService.GetWithAttempts().ToList();
 
                 // Use connectivity window minutes to decide whether a recent connectivity error
                 // should be treated as pending connectivity or classified as business (older than window)
@@ -79,6 +99,8 @@ namespace AutomataExistencias.Console.Jobs
 
                         var now = DateTime.UtcNow;
                         var safeException = (i.Exception ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ');
+                        // Hotfix_CaidaServicio: limitar tamano del texto que va al correo.
+                        if (safeException.Length > 1000) safeException = safeException.Substring(0, 1000) + "...";
                         var desc = $"Id={i.Id} | Attempts={i.Attempts} | Err={safeException}";
 
                         if (!isConn)

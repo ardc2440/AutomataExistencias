@@ -8,6 +8,9 @@ namespace AutomataExistencias.Domain.Aldebaran
 {
     public class RecoveryDomainService : IRecoveryDomainService
     {
+        // Hotfix_CaidaServicio: valor unico de 'flagged' compartido con RecoveryService.
+        public const int FlaggedAttempts = int.MaxValue - 1000;
+
         private readonly IUnitOfWorkAldebaran _unitOfWork;
 
         public RecoveryDomainService(IUnitOfWorkAldebaran unitOfWork)
@@ -19,22 +22,22 @@ namespace AutomataExistencias.Domain.Aldebaran
         {
             var set = new System.Collections.Generic.HashSet<int>();
 
-            var items = _unitOfWork.Repository<Item>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ItemId);
+            var items = _unitOfWork.Repository<Item>().Get(w => w.Attempts >= syncAttempts && w.Attempts < FlaggedAttempts && w.Exception != null).Select(s => s.ItemId);
             foreach (var id in items) if (id > 0) set.Add(id);
 
-            var bycolors = _unitOfWork.Repository<ItemByColor>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ItemId);
+            var bycolors = _unitOfWork.Repository<ItemByColor>().Get(w => w.Attempts >= syncAttempts && w.Attempts < FlaggedAttempts && w.Exception != null).Select(s => s.ItemId);
             foreach (var id in bycolors)
             {
                 if (id.HasValue && id.Value > 0) set.Add(id.Value);
             }
 
-            var stocks = _unitOfWork.Repository<Stock>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ItemId);
+            var stocks = _unitOfWork.Repository<Stock>().Get(w => w.Attempts >= syncAttempts && w.Attempts < FlaggedAttempts && w.Exception != null).Select(s => s.ItemId);
             foreach (var id in stocks) if (id > 0) set.Add(id);
 
-            var packs = _unitOfWork.Repository<Packaging>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ItemId);
+            var packs = _unitOfWork.Repository<Packaging>().Get(w => w.Attempts >= syncAttempts && w.Attempts < FlaggedAttempts && w.Exception != null).Select(s => s.ItemId);
             foreach (var id in packs) if (id.HasValue && id.Value > 0) set.Add(id.Value);
 
-            var trans = _unitOfWork.Repository<TransitOrder>().Get(w => w.Attempts >= syncAttempts && w.Exception != null).Select(s => s.ColorItemId);
+            var trans = _unitOfWork.Repository<TransitOrder>().Get(w => w.Attempts >= syncAttempts && w.Attempts < FlaggedAttempts && w.Exception != null).Select(s => s.ColorItemId);
             foreach (var id in trans) if (id.HasValue && id.Value > 0) set.Add(id.Value);
 
             // Bulk homologation mapping: if any candidate is actually a homologated id (ItemIdHomologado),
@@ -62,37 +65,39 @@ namespace AutomataExistencias.Domain.Aldebaran
             return candidates;
         }
 
+        // Hotfix_CaidaServicio: consultas con tracking (GetWithoutNoTracking). Antes se leia con AsNoTracking y luego
+        // Update/Remove adjuntaba instancias nuevas con la misma llave -> InvalidOperationException (21/22-sep).
         public void MarkEventsAsFlagged(int itemId, int flagAttempts)
         {
-            var items = _unitOfWork.Repository<Item>().Get(w => w.ItemId == itemId).ToList();
+            var items = _unitOfWork.Repository<Item>().GetWithoutNoTracking(w => w.ItemId == itemId).ToList();
             foreach (var it in items)
             {
                 it.Attempts = flagAttempts;
                 _unitOfWork.Repository<Item>().Update(it);
             }
 
-            var bycolors = _unitOfWork.Repository<ItemByColor>().Get(w => w.ItemId == itemId).ToList();
+            var bycolors = _unitOfWork.Repository<ItemByColor>().GetWithoutNoTracking(w => w.ItemId == itemId).ToList();
             foreach (var b in bycolors)
             {
                 b.Attempts = flagAttempts;
                 _unitOfWork.Repository<ItemByColor>().Update(b);
             }
 
-            var stocks = _unitOfWork.Repository<Stock>().Get(w => w.ItemId == itemId).ToList();
+            var stocks = _unitOfWork.Repository<Stock>().GetWithoutNoTracking(w => w.ItemId == itemId).ToList();
             foreach (var s in stocks)
             {
                 s.Attempts = flagAttempts;
                 _unitOfWork.Repository<Stock>().Update(s);
             }
 
-            var packs = _unitOfWork.Repository<Packaging>().Get(w => w.ItemId == itemId).ToList();
+            var packs = _unitOfWork.Repository<Packaging>().GetWithoutNoTracking(w => w.ItemId == itemId).ToList();
             foreach (var p in packs)
             {
                 p.Attempts = flagAttempts;
                 _unitOfWork.Repository<Packaging>().Update(p);
             }
 
-            var trans = _unitOfWork.Repository<TransitOrder>().Get(w => (w.ColorItemId.HasValue && w.ColorItemId.Value == itemId) || w.TransitOrderItemId == itemId).ToList();
+            var trans = _unitOfWork.Repository<TransitOrder>().GetWithoutNoTracking(w => (w.ColorItemId.HasValue && w.ColorItemId.Value == itemId) || w.TransitOrderItemId == itemId).ToList();
             foreach (var t in trans)
             {
                 t.Attempts = flagAttempts;
@@ -129,19 +134,19 @@ namespace AutomataExistencias.Domain.Aldebaran
 
         public void ClearEventsForItem(int itemId, int flagAttempts)
         {
-            var items = _unitOfWork.Repository<Item>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
+            var items = _unitOfWork.Repository<Item>().GetWithoutNoTracking(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<Item>().Remove(items);
 
-            var bycolors = _unitOfWork.Repository<ItemByColor>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
+            var bycolors = _unitOfWork.Repository<ItemByColor>().GetWithoutNoTracking(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<ItemByColor>().Remove(bycolors);
 
-            var stocks = _unitOfWork.Repository<Stock>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
+            var stocks = _unitOfWork.Repository<Stock>().GetWithoutNoTracking(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<Stock>().Remove(stocks);
 
-            var packs = _unitOfWork.Repository<Packaging>().Get(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
+            var packs = _unitOfWork.Repository<Packaging>().GetWithoutNoTracking(w => w.ItemId == itemId && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<Packaging>().Remove(packs);
 
-            var trans = _unitOfWork.Repository<TransitOrder>().Get(w => ((w.ColorItemId.HasValue && w.ColorItemId.Value == itemId) || w.TransitOrderItemId == itemId) && w.Attempts >= flagAttempts).ToList();
+            var trans = _unitOfWork.Repository<TransitOrder>().GetWithoutNoTracking(w => ((w.ColorItemId.HasValue && w.ColorItemId.Value == itemId) || w.TransitOrderItemId == itemId) && w.Attempts >= flagAttempts).ToList();
             _unitOfWork.Repository<TransitOrder>().Remove(trans);
 
             _unitOfWork.Repository<Item>().SaveChanges();

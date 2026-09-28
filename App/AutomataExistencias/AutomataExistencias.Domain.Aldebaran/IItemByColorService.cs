@@ -5,6 +5,7 @@ namespace AutomataExistencias.Domain.Aldebaran
 {
     public interface IItemByColorService
     {
+        [System.Obsolete("Carga la tabla completa en memoria. Usar Get(int attempts), que filtra en SQL.")]
         IEnumerable<ItemByColor> Get();
         IEnumerable<ItemByColor> Get(int attempts);
         void Remove(ItemByColor item);

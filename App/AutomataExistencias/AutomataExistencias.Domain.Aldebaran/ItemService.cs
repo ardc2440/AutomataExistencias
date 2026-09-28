@@ -26,6 +26,11 @@ namespace AutomataExistencias.Domain.Aldebaran
             return _unitOfWork.Repository<Item>().Get(w => w.Attempts < attempts);
         }
 
+        public IEnumerable<Item> GetWithAttempts()
+        {
+            return _unitOfWork.Repository<Item>().Get(w => w.Attempts > 0);
+        }
+
         public void Remove(Item item)
         {
             _unitOfWork.Repository<Item>().Remove(item);

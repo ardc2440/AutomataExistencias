@@ -14,44 +14,45 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class SyncJob : IJob
     {
-        private readonly Core.IAutomataState _automataState;
-        private readonly IConnectivityErrorClassifier _connectivityErrorClassifier;
-        private readonly INotificationService _notificationService;
-        private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
+        private Core.IAutomataState _automataState;
+        private IConnectivityErrorClassifier _connectivityErrorClassifier;
+        private INotificationService _notificationService;
+        private Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
         /*ItemByColor*/
-        private readonly IItemByColorSynchronize _itemByColorSynchronize;
-        private readonly Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
+        private IItemByColorSynchronize _itemByColorSynchronize;
+        private Domain.Aldebaran.IItemByColorService _aldebaranItemByColorService;
         /*Item*/
-        private readonly IItemSynchronize _itemSynchronize;
-        private readonly Domain.Aldebaran.IItemService _aldebaranItemService;
+        private IItemSynchronize _itemSynchronize;
+        private Domain.Aldebaran.IItemService _aldebaranItemService;
         /*Lines*/
-        private readonly ILineSynchronize _lineSynchronize;
-        private readonly Domain.Aldebaran.ILineService _aldebaranLineService;
+        private ILineSynchronize _lineSynchronize;
+        private Domain.Aldebaran.ILineService _aldebaranLineService;
         /*Money*/
-        private readonly IMoneySynchronize _moneySynchronize;
-        private readonly Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
+        private IMoneySynchronize _moneySynchronize;
+        private Domain.Aldebaran.IMoneyService _aldebaranMoneyService;
         /*Packaging*/
-        private readonly IPackagingSynchronize _packagingSynchronize;
-        private readonly Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
+        private IPackagingSynchronize _packagingSynchronize;
+        private Domain.Aldebaran.IPackagingService _aldebaranPackagingService;
         /*Stock*/
-        private readonly IStockSynchronize _stockSynchronize;
-        private readonly Domain.Aldebaran.IStockService _aldebaranStockService;
+        private IStockSynchronize _stockSynchronize;
+        private Domain.Aldebaran.IStockService _aldebaranStockService;
         /*TransitOrder*/
-        private readonly ITransitOrderSynchronize _transitOrderSynchronize;
-        private readonly Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
+        private ITransitOrderSynchronize _transitOrderSynchronize;
+        private Domain.Aldebaran.ITransitOrderService _aldebaranTransitOrderService;
         /*UnitMeasured*/
-        private readonly IUnitMeasuredSynchronize _unitMeasuredSynchronize;
-        private readonly Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
+        private IUnitMeasuredSynchronize _unitMeasuredSynchronize;
+        private Domain.Aldebaran.IUnitMeasuredService _aldebaranUnitMeasuredService;
         /*UpdateProcess*/
-        private readonly IUpdateProcessSynchronize _updateProcessSynchronize;
+        private IUpdateProcessSynchronize _updateProcessSynchronize;
         /*Others*/
-        private readonly Logger _logger;
-        private readonly IConfigurator _configurator;
-        private readonly int _syncAttempts;
-        private readonly int _windowMinutes;
-        private readonly double _percentThreshold;
-        private readonly int _minAttempts;
-        private readonly int _consecutiveThreshold;
+        private Logger _logger;
+        private IConfigurator _configurator;
+        private int _syncAttempts;
+        private int _windowMinutes;
+        private double _percentThreshold;
+        private int _minAttempts;
+        private int _consecutiveThreshold;
+        private bool _recoveryEnabled;
         /*Data*/
         private IEnumerable<DataAccess.Aldebaran.Line> _lineData;
         private IEnumerable<DataAccess.Aldebaran.Money> _moneyData;
@@ -62,9 +63,8 @@ namespace AutomataExistencias.Console.Jobs
         private IEnumerable<DataAccess.Aldebaran.Stock> _stockData;
         private IEnumerable<DataAccess.Aldebaran.Packaging> _packagingData;
 
-        public SyncJob()
+        private void ResolveDependencies(ILifetimeScope container)
         {
-            var container = AutofacConfigurator.GetContainer();
             /*ItemByColor*/
             _itemByColorSynchronize = container.Resolve<IItemByColorSynchronize>();
             _aldebaranItemByColorService = container.Resolve<Domain.Aldebaran.IItemByColorService>();
@@ -98,6 +98,9 @@ namespace AutomataExistencias.Console.Jobs
             /*Others*/
             var configurator = container.Resolve<IConfigurator>();
             _configurator = configurator;
+            // Hotfix_CaidaServicio: interruptor de emergencia de la autorecuperacion (default true si la llave no existe).
+            bool recoveryEnabled;
+            _recoveryEnabled = !bool.TryParse(configurator.GetKey("Recovery.Enabled"), out recoveryEnabled) || recoveryEnabled;
             _syncAttempts = configurator.GetKey("SyncAttempts").ToInt();
 
             // Connectivity detection settings from config (safe parse)
@@ -174,9 +177,9 @@ namespace AutomataExistencias.Console.Jobs
                     var pctPartial = _automataState.GetConnectivityErrorPercentage(_windowMinutes);
 
                     // Do not log detailed debug per-table to avoid noise; only act if thresholds exceeded
-                    if (totalAttemptsPartial >= _minAttempts && pctPartial >= _percentThreshold)
+                    if (_recoveryEnabled && totalAttemptsPartial >= _minAttempts && pctPartial >= _percentThreshold)
                     {
-                        if (!_automataState.IsDestinationConnectivityDown)
+                        if (_recoveryEnabled && !_automataState.IsDestinationConnectivityDown)
                         {
                             _logger.Warn($"Connectivity thresholds exceeded during run: attempts={totalAttemptsPartial}, errors={totalErrorsPartial}, percent={pctPartial:0.##}% (threshold={_percentThreshold}%). Marking DestinationConnectivityDown=true and aborting remaining schedule");
                             _automataState.IsDestinationConnectivityDown = true;
@@ -223,7 +226,7 @@ namespace AutomataExistencias.Console.Jobs
 
                 if (totalAttempts >= _minAttempts && pct >= _percentThreshold)
                 {
-                    if (!_automataState.IsDestinationConnectivityDown)
+                    if (_recoveryEnabled && !_automataState.IsDestinationConnectivityDown)
                     {
                         _logger.Warn($"Connectivity thresholds exceeded: attempts={totalAttempts}, errors={totalErrors}, percent={pct:0.##}% (threshold={_percentThreshold}%). Marking DestinationConnectivityDown=true");
                         _automataState.IsDestinationConnectivityDown = true;
@@ -249,7 +252,7 @@ namespace AutomataExistencias.Console.Jobs
                     var cons = _automataState.GetConsecutiveFailures(conn.InventoryAutomationConnectionId);
                     if (cons >= _consecutiveThreshold)
                     {
-                        if (!_automataState.IsDestinationConnectivityDown)
+                        if (_recoveryEnabled && !_automataState.IsDestinationConnectivityDown)
                         {
                             _automataState.IsDestinationConnectivityDown = true;
                             if (_automataState.DestinationConnectivityDownSince == null)
@@ -267,7 +270,7 @@ namespace AutomataExistencias.Console.Jobs
                     var consOrigin = _automataState.GetConsecutiveFailures(0);
                     if (consOrigin >= _consecutiveThreshold)
                     {
-                        if (!_automataState.IsDestinationConnectivityDown)
+                        if (_recoveryEnabled && !_automataState.IsDestinationConnectivityDown)
                         {
                             _automataState.IsDestinationConnectivityDown = true;
                             if (_automataState.DestinationConnectivityDownSince == null)
@@ -359,6 +362,26 @@ namespace AutomataExistencias.Console.Jobs
 
         public void Execute(IJobExecutionContext context)
         {
+            // Hotfix_CaidaServicio: cada ejecucion usa su propio lifetime scope de Autofac.
+            // Al salir del using se liberan (Dispose) los DbContext creados en la ejecucion;
+            // antes se resolvian desde el contenedor raiz y quedaban retenidos (fuga de memoria).
+            try
+            {
+                using (var scope = AutofacConfigurator.GetContainer().BeginLifetimeScope())
+                {
+                    ResolveDependencies(scope);
+                    ExecuteInternal();
+                }
+            }
+            catch (Exception ex)
+            {
+                // No propagar a Quartz: la siguiente ejecucion debe dispararse normalmente.
+                LogManager.GetCurrentClassLogger().Error($"[SyncJob] unhandled error: {ex}");
+            }
+        }
+
+        private void ExecuteInternal()
+        {
             _logger.Debug($"SyncJob.Execute starting. IsDestinationConnectivityDown={_automataState.IsDestinationConnectivityDown} DestinationConnectivityDownSince={_automataState.DestinationConnectivityDownSince}");
             if (_automataState.IsDestinationConnectivityDown)
             {
@@ -384,7 +407,7 @@ namespace AutomataExistencias.Console.Jobs
 
                 if (totalAttempts >= _minAttempts && pct >= _percentThreshold)
                 {
-                    if (!_automataState.IsDestinationConnectivityDown)
+                    if (_recoveryEnabled && !_automataState.IsDestinationConnectivityDown)
                     {
                         _automataState.IsDestinationConnectivityDown = true;
                         if (_automataState.DestinationConnectivityDownSince == null)
@@ -402,7 +425,7 @@ namespace AutomataExistencias.Console.Jobs
                     var cons = _automataState.GetConsecutiveFailures(conn.InventoryAutomationConnectionId);
                     if (cons >= _consecutiveThreshold)
                     {
-                        if (!_automataState.IsDestinationConnectivityDown)
+                        if (_recoveryEnabled && !_automataState.IsDestinationConnectivityDown)
                         {
                             _automataState.IsDestinationConnectivityDown = true;
                             if (_automataState.DestinationConnectivityDownSince == null)

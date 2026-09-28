@@ -13,21 +13,40 @@ namespace AutomataExistencias.Console.Jobs
     [DisallowConcurrentExecution]
     public class RecoveryJob : IJob
     {
-        private readonly IRecoveryService _recoveryService;
-        private readonly Logger _logger;
+        private IRecoveryService _recoveryService;
+        private Logger _logger;
 
-        public RecoveryJob()
+        private void ResolveDependencies(ILifetimeScope container)
         {
-            var container = AutofacConfigurator.GetContainer();
             _recoveryService = container.Resolve<IRecoveryService>();
             _logger = LogManager.GetCurrentClassLogger();
         }
 
         public void Execute(IJobExecutionContext context)
         {
+            // Hotfix_CaidaServicio: cada ejecucion usa su propio lifetime scope de Autofac.
+            // Al salir del using se liberan (Dispose) los DbContext creados en la ejecucion;
+            // antes se resolvian desde el contenedor raiz y quedaban retenidos (fuga de memoria).
             try
             {
-                var container = AutofacConfigurator.GetContainer();
+                using (var scope = AutofacConfigurator.GetContainer().BeginLifetimeScope())
+                {
+                    ResolveDependencies(scope);
+                    ExecuteInternal(scope);
+                }
+            }
+            catch (Exception ex)
+            {
+                // No propagar a Quartz: la siguiente ejecucion debe dispararse normalmente.
+                LogManager.GetCurrentClassLogger().Error($"[RecoveryJob] unhandled error: {ex}");
+            }
+        }
+
+        private void ExecuteInternal(ILifetimeScope scope)
+        {
+            try
+            {
+                var container = scope;
                 var automataState = container.Resolve<Core.IAutomataState>();
                 if (!automataState.IsDestinationConnectivityDown)
                 {

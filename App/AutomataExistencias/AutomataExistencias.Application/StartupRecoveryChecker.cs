@@ -172,13 +172,16 @@ namespace AutomataExistencias.Application
                     }
                 };
 
-                collect(_itemService.Get());
-                collect(_itemByColorService.Get());
-                collect(_stockService.Get());
-                collect(_transitOrderService.Get());
-                collect(_packagingService.Get());
-                collect(_unitMeasuredService.Get());
-                collect(_moneyService.Get());
+                // Hotfix_CaidaServicio: filtro Attempts <= maxAttempts en SQL (Get(n) => Attempts < n).
+                // Antes Get() cargaba las 7 tablas completas a memoria y filtraba despues.
+                var attemptsLimit = maxAttempts + 1;
+                collect(_itemService.Get(attemptsLimit));
+                collect(_itemByColorService.Get(attemptsLimit));
+                collect(_stockService.Get(attemptsLimit));
+                collect(_transitOrderService.Get(attemptsLimit));
+                collect(_packagingService.Get(attemptsLimit));
+                collect(_unitMeasuredService.Get(attemptsLimit));
+                collect(_moneyService.Get(attemptsLimit));
 
                 var totalEvents = worldEventObjects.Count;
                 if (totalEvents < minAttempts)

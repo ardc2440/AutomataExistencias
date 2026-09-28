@@ -11,7 +11,10 @@ namespace AutomataExistencias.Application
         private readonly Domain.Aldebaran.IItemsMasterService _itemsMasterService;
         private readonly Domain.Aldebaran.IRecoveryDomainService _recoveryDomainService;
         private readonly Core.Configuration.IConfigurator _configurator;
-        private readonly ISyncOrchestrator _syncOrchestrator;
+        // Hotfix_CaidaServicio: fabrica -> orquestador nuevo (con DbContext nuevos) en cada corrida de sync.
+        private readonly Func<ISyncOrchestrator> _syncOrchestratorFactory;
+        // Hotfix_CaidaServicio: un solo recovery a la vez en todo el proceso (RecoveryJob y recovery de arranque).
+        private static readonly System.Threading.SemaphoreSlim RecoveryLock = new System.Threading.SemaphoreSlim(1, 1);
         private readonly Core.IAutomataState _automataState;
         private readonly INotificationService _notificationService;
         private readonly Domain.Aldebaran.IInventoryAutomationConnectionService _inventoryConnectionService;
@@ -20,7 +23,7 @@ namespace AutomataExistencias.Application
 
         public RecoveryService(Domain.Aldebaran.IItemsMasterService itemsMasterService,
             Domain.Aldebaran.IRecoveryDomainService recoveryDomainService,
-            ISyncOrchestrator syncOrchestrator,
+            Func<ISyncOrchestrator> syncOrchestratorFactory,
             Core.Configuration.IConfigurator configurator,
             Core.IAutomataState automataState,
             INotificationService notificationService,
@@ -29,7 +32,7 @@ namespace AutomataExistencias.Application
         {
             _itemsMasterService = itemsMasterService;
             _recoveryDomainService = recoveryDomainService;
-            _syncOrchestrator = syncOrchestrator;
+            _syncOrchestratorFactory = syncOrchestratorFactory;
             _configurator = configurator;
             _automataState = automataState;
             _inventoryConnectionService = inventoryConnectionService;
@@ -39,6 +42,23 @@ namespace AutomataExistencias.Application
         }
 
         public bool TryRecoverOnce()
+        {
+            if (!RecoveryLock.Wait(0))
+            {
+                _logger.Warn("RecoveryService: another recovery is already running. Skipping this attempt.");
+                return false;
+            }
+            try
+            {
+                return TryRecoverOnceInternal();
+            }
+            finally
+            {
+                RecoveryLock.Release();
+            }
+        }
+
+        private bool TryRecoverOnceInternal()
         {
             try
             {
@@ -70,7 +90,7 @@ namespace AutomataExistencias.Application
                 // Global mode is always enabled for recovery (massive two-phase flow over candidates)
                 var ranGlobal = false;
 
-                var flagAttempts = int.MaxValue - 1000;
+                var flagAttempts = Domain.Aldebaran.RecoveryDomainService.FlaggedAttempts;
                 var itemTimeoutSeconds = 0;
                 int.TryParse(_configurator.GetKey("Recovery.ItemTimeoutSeconds"), out itemTimeoutSeconds);
                 if (itemTimeoutSeconds <= 0) itemTimeoutSeconds = 300;
@@ -128,7 +148,7 @@ namespace AutomataExistencias.Application
                         // 1) Mark events for this batch
                         foreach (var id in batch)
                         {
-                            _recoveryDomainService.MarkEventsAsFlagged(id, int.MaxValue - 1000);
+                            _recoveryDomainService.MarkEventsAsFlagged(id, flagAttempts);
                         }
 
                         // 2) Unpublish batch (row-by-row)
@@ -138,31 +158,50 @@ namespace AutomataExistencias.Application
                             catch (Exception ex) { _logger.Error($"RecoveryService: error unpublishing ItemId={id} in global batch: {ex}"); }
                         }
 
-                        // 3) Run full sync to process deletions
-                        ExecuteSyncOnce(syncAttempts);
-
-                        // 4) Wait until pending events for this batch are processed or timeout
+                        // Hotfix_CaidaServicio: garantizar que el lote SIEMPRE se republique, aun con timeout o excepcion.
                         var waited = 0;
                         var itemTimeoutSecondsGlobal = 0;
                         int.TryParse(_configurator.GetKey("Recovery.ItemTimeoutSeconds"), out itemTimeoutSecondsGlobal);
                         if (itemTimeoutSecondsGlobal <= 0) itemTimeoutSecondsGlobal = 300;
-                        while (batch.Sum(id => _recoveryDomainService.CountPendingEvents(id, syncAttempts)) > 0 && waited < itemTimeoutSecondsGlobal)
+                        var batchRepublished = false;
+                        try
                         {
-                            System.Threading.Thread.Sleep(1000);
-                            waited++;
-                        }
+                            // 3) Run full sync to process deletions
+                            ExecuteSyncOnce(syncAttempts);
 
-                        if (waited >= itemTimeoutSecondsGlobal)
-                        {
-                            _logger.Warn("RecoveryService: timeout waiting after global unpublish for batch");
-                            return false;
-                        }
+                            // 4) Wait until pending events for this batch are processed or timeout
+                            waited = 0;
+                            while (batch.Sum(id => _recoveryDomainService.CountPendingEvents(id, syncAttempts)) > 0 && waited < itemTimeoutSecondsGlobal)
+                            {
+                                System.Threading.Thread.Sleep(1000);
+                                waited++;
+                            }
 
-                        // 5) Republish batch
-                        foreach (var id in batch)
+                            if (waited >= itemTimeoutSecondsGlobal)
+                            {
+                                _logger.Warn("RecoveryService: timeout waiting after global unpublish for batch");
+                                return false;
+                            }
+
+                            // 5) Republish batch
+                            foreach (var id in batch)
+                            {
+                                try { _itemsMasterService.UpdateVisibility(id, true); }
+                                catch (Exception ex) { _logger.Error($"RecoveryService: error republishing ItemId={id} in global batch: {ex}"); }
+                            }
+                            batchRepublished = true;
+                        }
+                        finally
                         {
-                            try { _itemsMasterService.UpdateVisibility(id, true); }
-                            catch (Exception ex) { _logger.Error($"RecoveryService: error republishing ItemId={id} in global batch: {ex}"); }
+                            if (!batchRepublished)
+                            {
+                                _logger.Warn("RecoveryService: batch aborted before republish; republishing batch to avoid hidden items");
+                                foreach (var id in batch)
+                                {
+                                    try { _itemsMasterService.UpdateVisibility(id, true); }
+                                    catch (Exception ex) { _logger.Error($"RecoveryService: error republishing ItemId={id} after abort: {ex}"); }
+                                }
+                            }
                         }
 
                         // 6) Run full sync to process insertions
@@ -317,7 +356,7 @@ namespace AutomataExistencias.Application
         {
             // Reuse SyncJob.RunOnceForced by resolving it from container and invoking the method
             // execute orchestrator via injected service
-            _syncOrchestrator.RunOnce(true);
+            _syncOrchestratorFactory().RunOnce(true);
         }
 
         // Active connectivity check: verify origin and all destinations are reachable.

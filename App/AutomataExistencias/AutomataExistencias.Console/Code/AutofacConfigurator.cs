@@ -98,7 +98,8 @@ namespace AutomataExistencias.Console.Code
             builder.RegisterType<TransitOrderSynchronize>().As<ITransitOrderSynchronize>();
             builder.RegisterType<UnitMeasuredSynchronize>().As<IUnitMeasuredSynchronize>();
             // Sync orchestrator service used by Recovery to trigger immediate processing
-            builder.RegisterType<SyncOrchestratorService>().As<ISyncOrchestrator>().SingleInstance();
+            // Hotfix_CaidaServicio: antes SingleInstance -> retenia DbContexts de por vida y no es thread-safe.
+            builder.RegisterType<SyncOrchestratorService>().As<ISyncOrchestrator>().InstancePerDependency(); // RecoveryService usa Func<ISyncOrchestrator>
 
             /*Jobs*/
             builder.RegisterType<JobSchedulerFactory>().As<IJobSchedulerFactory>();

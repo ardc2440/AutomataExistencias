@@ -18,5 +18,9 @@ namespace AutomataExistencias.Application
         // nonConnectivityDescriptions: formatted descriptions for business errors.
         // pendingConnectivityDescriptions: formatted descriptions for connectivity-pending items.
         void NotifyPendingAndNonConnectivityErrors(IEnumerable<string> nonConnectivityDescriptions, IEnumerable<string> pendingConnectivityDescriptions, DateTime since);
+
+        // Hotfix_CaidaServicio: eventos del ciclo de vida del servicio (inicio, detencion, caida).
+        // waitForSend=true espera el envio (max. 15 s); usar cuando el proceso va a terminar.
+        void NotifyServiceEvent(string subject, string body, bool waitForSend = false);
     }
 }

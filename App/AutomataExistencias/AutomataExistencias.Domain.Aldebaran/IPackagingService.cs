@@ -5,6 +5,7 @@ namespace AutomataExistencias.Domain.Aldebaran
 {
     public interface IPackagingService
     {
+        [System.Obsolete("Carga la tabla completa en memoria. Usar Get(int attempts), que filtra en SQL.")]
         IEnumerable<Packaging> Get();
         IEnumerable<Packaging> Get(int attempts);
         void Remove(Packaging item);

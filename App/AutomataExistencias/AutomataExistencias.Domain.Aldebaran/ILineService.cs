@@ -5,6 +5,7 @@ namespace AutomataExistencias.Domain.Aldebaran
 {
     public interface ILineService
     {
+        [System.Obsolete("Carga la tabla completa en memoria. Usar Get(int attempts), que filtra en SQL.")]
         IEnumerable<Line> Get();
         IEnumerable<Line> Get(int attempts);
         void Remove(Line item);

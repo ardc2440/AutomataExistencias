@@ -166,6 +166,28 @@ namespace AutomataExistencias.Application
             }
         }
 
+        public void NotifyServiceEvent(string subject, string body, bool waitForSend = false)
+        {
+            try
+            {
+                var recipients = _recipientService.GetActiveByType("CONNECTIVITY").Select(r => r.Email).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
+                if (!recipients.Any())
+                {
+                    _logger.Warn("NotifyServiceEvent: no recipients configured for CONNECTIVITY");
+                    return;
+                }
+
+                var fullBody = $"{body}\r\n\r\nServidor: {Environment.MachineName}\r\nFecha: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                var task = SendEmailAsync(recipients, "[Automata] " + subject, fullBody);
+                if (waitForSend)
+                    task.Wait(TimeSpan.FromSeconds(15));
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"NotifyServiceEvent failed: {ex}");
+            }
+        }
+
         private async System.Threading.Tasks.Task SendEmailAsync(IEnumerable<string> to, string subject, string body)
         {
             try
@@ -185,6 +207,10 @@ namespace AutomataExistencias.Application
                     _logger.Error("Mail configuration missing: ensure Mail.Server and Mail.SenderEmail are set in App.config");
                     return;
                 }
+
+                // Hotfix_CaidaServicio: sin contrasena no se envian credenciales y Gmail responde 5.7.0 Authentication Required.
+                if (string.IsNullOrWhiteSpace((string)password))
+                    _logger.Error("Mail.Password esta vacio en la configuracion: el SMTP rechazara el envio (5.7.0 Authentication Required).");
 
                 int port = 25;
                 int.TryParse(portStr, out port);

@@ -17,6 +17,7 @@ namespace AutomataExistencias.Console.Schedules
     {
         private readonly Logger _logger;
         private readonly IConfigurator _configurator;
+        private IScheduler _scheduler;
         public JobSchedulerFactory()
         {
             var container = AutofacConfigurator.GetContainer();
@@ -48,16 +49,35 @@ namespace AutomataExistencias.Console.Schedules
                 .Build();
             return new Tuple<IJobDetail, ITrigger>(jobBuilder, trigger);
         }
+        public void Shutdown()
+        {
+            if (_scheduler != null && !_scheduler.IsShutdown)
+            {
+                _logger.Info("Shutting down Quartz scheduler (waiting for running jobs)...");
+                _scheduler.Shutdown(true);
+            }
+        }
+
         public void Schedule()
         {
             var syncJobTuple = SetSchedule<SyncJob>("Schedule.Interval");
             var schedFact = new StdSchedulerFactory();
             var factoryInstance = schedFact.GetScheduler();
+            _scheduler = factoryInstance;
             factoryInstance.Start();
             factoryInstance.ScheduleJob(syncJobTuple.Item1, syncJobTuple.Item2);
             // Schedule RecoveryJob every configured interval
-            var recoveryTuple = SetSchedule<RecoveryJob>("Recovery.Interval");
-            factoryInstance.ScheduleJob(recoveryTuple.Item1, recoveryTuple.Item2);
+            // Hotfix_CaidaServicio: interruptor de emergencia Recovery.Enabled (default true).
+            bool recoveryEnabled;
+            if (!bool.TryParse(_configurator.GetKey("Recovery.Enabled"), out recoveryEnabled) || recoveryEnabled)
+            {
+                var recoveryTuple = SetSchedule<RecoveryJob>("Recovery.Interval");
+                factoryInstance.ScheduleJob(recoveryTuple.Item1, recoveryTuple.Item2);
+            }
+            else
+            {
+                _logger.Warn("Recovery.Enabled=false: RecoveryJob no se agenda y SyncJob no marcara DOWN.");
+            }
             // Schedule NonConnectivityErrorsJob every configured interval (default 30 minutes)
             var nonConnTuple = SetSchedule<NonConnectivityErrorsJob>("Notification.NonConnectivityInterval");
             factoryInstance.ScheduleJob(nonConnTuple.Item1, nonConnTuple.Item2);
